@@ -6,6 +6,39 @@ an update; the milestones below summarize the significant changes.
 
 ## Unreleased
 
+### Moved
+- The from-scratch, script-led rebuild that briefly lived here as `v2/` is now
+  its own plugin and repository:
+  [`sunxd3/bayesian-workflow`](https://github.com/sunxd3/bayesian-workflow).
+  This repository is archived; new development (research agent, knowledge
+  store / world model) happens there.
+
+### Added
+- **`report-writing` skill** — the writing quality bar for the final report
+  (skim test, narrative arc, one-load-bearing-number density rule, figure
+  discipline, detail tiers, mechanical hygiene, and a mandatory self-audit),
+  linked by the `report-writer` agent alongside the existing
+  `artifact-guidelines` format references. Backported from the successor
+  plugin's report pipeline, adapted for a single writer with no external
+  critic: every number must trace to a source artifact, and the writer runs
+  the skim test on its own draft before delivering.
+- Bundled Workflow script `workflows/validate-experiments.js` — Phase 3 now
+  runs as deterministic **validation rounds**: the script enforces stage
+  sequencing (prior → recovery → fit → ppc → critique), the two-refine FIX
+  budget, MCMC concurrency throttling, and a verdict-vs-numbers audit on
+  fit results, while the orchestrator keeps all judgment calls (EXPLORE
+  refinement, new structural questions, selection) between rounds. The
+  orchestration skill documents the round protocol and retains the manual
+  task-pool protocol as a fallback for harnesses without the Workflow tool.
+  `/bayesian-workflow:run` gained `Workflow` in its allowed tools.
+- `status.json` completion records — every pipeline stage agent now writes
+  a machine-readable record (verdict, key numbers, artifact list) as its
+  last file, and short-circuits on re-dispatch when a terminal record with
+  intact artifacts already exists (new "Step 3 — Completed-work check" and
+  "On completion" sections in the `validation-protocol` skill). Interrupted
+  or re-run rounds recover in seconds instead of re-running MCMC, and the
+  mechanism works across sessions because it is file-based.
+
 ### Changed
 - Renamed agent `recovery-checker` → `fake-data-checker` to match Gelman's
   canonical "fake-data simulation" vocabulary. Restructured the agent body
