@@ -35,6 +35,7 @@ Files written under `output_dir`:
 - `prior_model.stan` — generated-quantities-only Stan program that mirrors the priors in `model.stan` via `_rng` and emits `y_rep`. Ref: `stan > Pattern 1: Prior Simulation`.
 - `prior_predictive.nc` — ArviZ InferenceData (`prior` and `prior_predictive` groups).
 - `prior_predictive_report.html` — verdict + diagnostics + visual evidence. Begin with a verdict line. Follow `artifact-guidelines > references/html-report`.
+- `status.json` — machine-readable completion record (verdict, key numbers, artifact list). Written LAST. See `validation-protocol > On completion`.
 - `*.png` — predictive-check plots.
 - `*.py` — analysis scripts.
 
@@ -47,6 +48,10 @@ Files written outside `output_dir`:
 The block below is a workflow spec in Python-style pseudocode. Function names describe operations you perform; this is **not** actual code to execute. Follow the data flow: each line consumes the inputs shown and produces the named outputs. Use `# ref:` comments to load skill references on demand.
 
 ```python
+# ref: validation-protocol > Step 3 — if output_dir/status.json records PASS and
+# its artifacts exist, return that result and stop.
+check_completed_work(output_dir)
+
 data = load(data_path)                                # for stan_data dimensions, covariates,
                                                       # and y_obs to attach to InferenceData
 append_log("data loaded", shape=data.shape)           # → output_dir/log.md
@@ -113,6 +118,9 @@ append_log("verdict", value=verdict.label, rationale=verdict.rationale)
 write(output_dir / "prior_predictive_report.html",    # verdict + checks + adjustments + evidence
       compose_report(verdict, idata, plots, adjustments_made=...))
                                                       # ref: artifact-guidelines > references/html-report
+
+write_status_json(output_dir, verdict)                # LAST file — completion marker
+                                                      # ref: validation-protocol > On completion
 
 return summary_of(verdict)
 ```

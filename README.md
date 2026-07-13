@@ -58,8 +58,19 @@ Individual phases can also be run standalone — for example, EDA alone:
 ## What's inside
 
 **Orchestration skill** — `orchestration` holds the full workflow protocol
-(phases, task-pool semantics, canonical file structure, dispatch logic).
+(phases, validation-round semantics, canonical file structure, dispatch logic).
 Loaded by the `/bayesian-workflow:run` command.
+
+**Bundled workflow script** — `workflows/validate-experiments.js` runs one
+round of the Phase 3 validation pipeline as a deterministic Workflow-tool
+script: stage sequencing, the FIX-refine budget, MCMC concurrency throttling,
+and verdict-vs-numbers cross-checks are enforced in code, while the
+orchestrator keeps every judgment call (critique-driven exploration, new
+structural questions, model selection) between rounds. On harnesses without
+the Workflow tool, the orchestration skill falls back to a manual task-pool
+protocol. Stage agents write a machine-readable `status.json` completion
+record, so interrupted rounds resume cheaply — completed stages are verified
+in seconds instead of re-fitted.
 
 **Subagents (11)** — `eda-analyst`, `analysis-planner`, `model-designer`,
 `prior-predictive-checker`, `fake-data-checker`, `model-fitter`,

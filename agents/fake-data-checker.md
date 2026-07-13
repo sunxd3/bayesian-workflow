@@ -33,6 +33,7 @@ Files written under `output_dir`:
 - `log.md` — append-only notebook. Append entries live as work proceeds, not at the end. See `artifact-guidelines > references/markdown-report`.
 - `simulator.stan` — GQ-only Stan program; a line-by-line mirror of `model.stan`. Ref: `fake-data-simulation > references/single-draw` (step 2).
 - `recovery_report.html` — verdict + diagnostics + visual evidence. Begin with a verdict line. Follow the design in `artifact-guidelines > references/html-report`.
+- `status.json` — machine-readable completion record (verdict, key numbers, artifact list). Written LAST. See `validation-protocol > On completion`.
 - `*.png` — recovery scatter and interval plots.
 
 ## Instructions
@@ -40,6 +41,10 @@ Files written under `output_dir`:
 The block below is a workflow spec in Python-style pseudocode. Function names describe operations you perform; this is **not** actual code to execute. Follow the data flow: each line consumes the inputs shown and produces the named outputs. Use `# ref:` comments to load skill references on demand.
 
 ```python
+# ref: validation-protocol > Step 3 — if output_dir/status.json records PASS and
+# its artifacts exist, return that result and stop.
+check_completed_work(output_dir)
+
 model_spec = read_model(experiment_dir)               # model.stan + any prior context
 append_log("loaded model spec")                       # → output_dir/log.md
 
@@ -72,6 +77,10 @@ append_log("verdict", value=verdict.label, rationale=verdict.rationale)
 write(output_dir / "recovery_report.html",            # final knit; HTML with embedded plots
       compose_report(true_params, result, verdict, plots))
                                                       # ref: artifact-guidelines > references/html-report
+
+write_status_json(output_dir, verdict,                # LAST file — completion marker
+                  rhat_max=result.rhat_max,           # ref: validation-protocol > On completion
+                  divergences=result.divergences)
 
 return summary_of(verdict, result, true_params)
 ```

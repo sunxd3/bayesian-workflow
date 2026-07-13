@@ -96,7 +96,7 @@ Execution: Typical count is 2-3 instances. If an instance fails, relaunch once; 
 
 After completion: Synthesize findings from all instances and document convergent patterns (all agree) and divergent insights (unique to one).
 
-## Task Pool for Pipeline Flow
+## Validation Rounds for Pipeline Flow
 
 Model development involves many experiments (model classes × variants, often 7-10+). Instead of synchronizing at each stage, experiments flow independently through the validation pipeline:
 
@@ -104,7 +104,7 @@ Model development involves many experiments (model classes × variants, often 7-
 Experiment lifecycle:
 prior → recovery → fit → ppd → critique → ✓ complete
    ↓ fail    ↓ fail    ↓ fail  ↓ fail    ↓ BROKEN
- refine (FIX) → re-enter at failed stage (or skip if budget exhausted)
+ refine (FIX) → new variant → re-enter at prior (or skip if budget exhausted)
 
 Back-edges from critique:
   A  VIABLE/CONCERNS + suggestions → refiner (EXPLORE) → new variant → prior
@@ -116,51 +116,55 @@ Back-edges from model-selector (after all experiments terminal):
      COVERAGE: GAPS → designer → gap experiments → prior
 ```
 
-Use a **global task pool** mixing experiments at different stages:
+Phase 3 runs as **rounds**. Within a round, the bundled workflow script executes the mechanical pipeline over the current experiment list — stage sequencing, budgeted FIX refinement, MCMC throttling — deterministically. Between rounds, you make every judgment call: which critique suggestions to explore, which new structural questions to pursue, when to invoke the selector. The lifecycle back-edges above are yours to drive; the straight-line pipeline and its FAIL→FIX edge belong to the script.
+
+### Running a round
 
 ```
-Pool at any moment:
-├─ "prior-predictive-checker exp_A2"    (entering pipeline)
-├─ "model-fitter exp_C1"               (passed recovery)
-├─ "posterior-predictive-checker exp_D1"(passed fit)
-├─ "critique exp_E1"                   (passed ppd)
-└─ "prior-predictive-checker exp_B1_fix1" (re-entering after refine)
+Workflow({
+  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/validate-experiments.js",
+  args: {
+    projectDir: "<absolute project root>",
+    dataPath: "<absolute path to the dataset>",
+    experiments: [{ id: "exp_1", spec: "<model spec from experiment_plan.md>",
+                    context: "<optional carry-forward notes>" }, ...]
+  }
+})
 ```
 
-**Task tracking.** Use `TaskCreate`/`TaskUpdate`/`TaskList` to track subagent dispatch. Two states only:
-- Task exists, not completed → needs to be launched
-- Task completed → done, never re-launch
+Optional args: `experimentPlanPath`, `edaReportPath` (default to canonical locations under `projectDir`), `maxMcmcConcurrency` (default 3), `refineBudget` (default 2). Pass args as a plain JSON object with absolute paths. Do not edit the script file, and do not launch overlapping rounds that share an experiment directory.
 
-**Main loop.**
-1. Initialize: `TaskCreate("prior-predictive-checker {exp_id}")` for each experiment from experiment_plan
-2. While any task not completed:
-   a. `TaskList` to find incomplete tasks — **always check before dispatching**
-   b. Launch up to 3-5 incomplete tasks as parallel `Agent` calls
-   c. As each returns, `TaskUpdate(id, "completed")` and then:
-      - **Pass** → `TaskCreate` for next stage
-      - **Fail** → `TaskCreate("prior-predictive-checker {variant}")` after invoking `model-refiner` (FIX), or skip if refine budget (2) exhausted
-      - **Critique VIABLE/CONCERNS + suggestions** → mark complete, `TaskCreate("prior-predictive-checker {variant}")` after invoking `model-refiner` (EXPLORE)
-      - **Critique new question** → invoke `model-designer`, `TaskCreate` for resulting experiments
-      - **Critique BROKEN** → invoke `model-refiner` (FIX), `TaskCreate("prior-predictive-checker {variant}")` or skip
-3. All tasks completed → invoke `model-selector`
+Per experiment the script enforces: stage order; FAIL → `model-refiner` (FIX) → variant `{id}_fixN` re-enters at the prior stage; maximum `refineBudget` refiner invocations per experiment lifecycle, then skip; and a verdict-vs-numbers audit on fits (a PASS whose reported R̂/ESS/divergences violate thresholds is flagged `cross_check: "INCONSISTENT"`).
 
-**Compaction safety.** After context compression, `TaskList` is the ground truth. Always check it before dispatching. If a completed task's outcome is unclear, read its report file in the canonical location to determine the next step. Never re-launch a completed task.
+The round returns `{terminal, skipped, counts}`: each `terminal` entry carries the full stage trail plus the critique result (verdict, suggestions, `new_structural_question`); `skipped` entries name the failed stage and carry the trail for triage.
 
-**Task granularity.** One task per experiment per pipeline stage — NOT coarse phase-level tasks.
+### Between rounds — your decisions
 
-```
-Correct (per-experiment, per-stage):
-TaskCreate("prior-predictive-checker exp_1")
-TaskCreate("fake-data-checker exp_1")
-TaskCreate("model-fitter exp_1")
-TaskCreate("posterior-predictive-checker exp_1")
-TaskCreate("critique exp_1")
+Read the round's results, log observations to `log.md`, then build the next round's experiment list:
 
-Wrong (phase-level):
-TaskCreate("Phase 3: Model Development")  ← too coarse, no pipeline enforcement
-```
+- **Critique VIABLE/CONCERNS with suggestions** → invoke `model-refiner` (EXPLORE) via the Agent tool with the priority suggestions; add the resulting variant to the next round.
+- **Critique BROKEN** → decide whether one FIX attempt is warranted (invoke `model-refiner`, add the variant) or the experiment should be dropped.
+- **`new_structural_question`** (from critique or the selector) → invoke `model-designer` with the current best model as `baseline_spec`; add the resulting experiments.
+- **Skipped / agent-lost experiments** → triage from the trail. Re-running an experiment is cheap — completed stages short-circuit on their `status.json` — so a transient failure can simply be resubmitted. Apply the baseline special case: if a structural question's baseline variant failed pre-fit (prior or recovery) after its refine attempt, drop all experiments for that question.
+- **`cross_check: "INCONSISTENT"`** → read the fit report before trusting the experiment; re-dispatch or treat as failed.
+- **No new work** → all experiments terminal → invoke `model-selector`.
 
-**Sync points.** Only sync after all experiments reach terminal state (all tasks completed or experiments skipped). Fast experiments finish while slow ones are still being refined.
+Track rounds with `TaskCreate`/`TaskUpdate` at round granularity (e.g. "Round 2: exp_1_v2, exp_4, exp_5"), not per stage — the script owns stage tracking within a round.
+
+### Recovery
+
+- **Round interrupted or crashed:** re-invoke the same round with the same args. Stage agents follow the `validation-protocol` completed-work check, so finished stages return their recorded verdicts in seconds instead of re-fitting.
+- **Same session:** pass `resumeFromRunId` from the interrupted invocation to also replay completed agent calls from the workflow journal.
+
+### Fallback: task-pool protocol (no Workflow tool)
+
+If the Workflow tool is unavailable, drive the same pipeline manually with the Agent tool, tracked via `TaskCreate`/`TaskUpdate`/`TaskList` — one task per experiment per stage (never coarse phase-level tasks). Two states only: task exists and incomplete → needs launching; task completed → done, never re-launch.
+
+1. Initialize: `TaskCreate("prior-predictive-checker {exp_id}")` per experiment.
+2. While any task is incomplete: `TaskList` first — **always check before dispatching** — then launch up to 3-5 incomplete tasks as parallel Agent calls. As each returns, mark it completed and: **PASS** → `TaskCreate` for the next stage; **FAIL** → `model-refiner` (FIX) → `TaskCreate("prior-predictive-checker {variant}")`, or skip if the refine budget (2 per experiment lifecycle) is exhausted; **critique results** → handle per "Between rounds" above.
+3. All tasks completed → `model-selector`.
+
+Sync only after all experiments reach terminal state — fast experiments finish while slow ones are still being refined. After context compaction, `TaskList` and the `status.json` files in the canonical locations are the ground truth; read them before dispatching anything.
 
 ## Technical Stack
 
@@ -199,22 +203,27 @@ experiments/                    # Phase 3: Model Development
       prior_model.stan          # GQ-only: mirrors priors, generates y_rep
       prior_predictive_report.html  # (required)
       prior_predictive.nc       # ArviZ InferenceData (prior + prior_predictive)
+      status.json               # completion record (validation-protocol)
       *.png, *.py
     simulation/
       simulator.stan            # GQ-only: true params as data, generates y_rep
       recovery_report.html      # (required)
+      status.json               # completion record
       *.png, *.py
     fit/
       fit_report.html           # convergence diagnostics, assessment (required)
       posterior.nc              # ArviZ InferenceData (needed through reporting)
       thinned_draws.npz         # parameter draws only (lightweight)
       loo.json                  # LOO results: ELPD, Pareto k (needed by selector)
+      status.json               # completion record
       *.png, *.py
     posterior_predictive/
       posterior_predictive_report.html  # (required)
+      status.json               # completion record
       *.png, *.py
     critique/
       critique_report.html      # statistical + domain + framework (required)
+      status.json               # completion record
       *.png, *.py
   experiment_2/
   population_assessment.html    # model-selector output (required)
@@ -240,21 +249,21 @@ Invoke `eda-analyst` to explore the data. For complex datasets, run 1-3 instance
 
 ### Phase 3: Model Development and Selection → `experiments/`
 
-Use the task pool (see "Task Pool for Pipeline Flow") to validate all experiments from the experiment plan. Each experiment flows through 5 stages: `prior-predictive-checker` → `fake-data-checker` → `model-fitter` → `posterior-predictive-checker` → `critique`.
+Validate all experiments from the experiment plan in rounds (see "Validation Rounds for Pipeline Flow"). Each experiment flows through 5 stages: `prior-predictive-checker` → `fake-data-checker` → `model-fitter` → `posterior-predictive-checker` → `critique`.
 
 The `critique` agent performs statistical assessment, domain assessment, and framework questioning in a single pass.
 
-**Failure handling.**
-- Any stage fails → invoke `model-refiner` once, re-enter at failed stage
-- Refine fails → skip experiment
-- **Special case.** If a structural question's baseline variant fails pre-fit (prior or recovery), skip all experiments for that question after one refine attempt.
-- **Global budget.** Each experiment has a maximum of TWO `model-refiner` invocations across its entire lifecycle (all stages combined). If it fails a third time at any stage, mark it skipped.
+**Failure handling** (enforced by the round script; replicate manually only in fallback mode):
+- Any stage fails → `model-refiner` (FIX) → new variant re-enters at the prior stage
+- Refiner reports exhaustion or fails → skip experiment
+- **Global budget.** Each experiment has a maximum of TWO `model-refiner` invocations across its entire lifecycle (all stages combined). If it fails a third time at any stage, it is skipped.
+- **Special case (yours, between rounds).** If a structural question's baseline variant fails pre-fit (prior or recovery), drop all experiments for that question after one refine attempt.
 
 **Critique-driven iteration (REQUIRED).**
 When `critique` returns VIABLE or CONCERNS with improvement suggestions:
 1. Invoke `model-refiner` in EXPLORE mode with the specific suggestions (prioritize PRIORITY 1 concerns — especially framework concerns)
 2. Create a modified variant (e.g., `exp_1_v2`, `exp_1_robust`)
-3. Add the new variant to the task pool for validation
+3. Add the new variant to the next round for validation
 4. Compare the modified variant against its parent via LOO/ELPD
 5. If the modification improved the model, critique it again and repeat
 6. Stop iterating when: modifications no longer improve ELPD, or suggestions become unreasonable/impractical
@@ -272,20 +281,20 @@ Distinguish between:
 
 When a new question is identified from critique or selection insights:
 1. Invoke `model-designer` with the new question and the **current best model** as `baseline_spec` (not the original Phase 2 baseline — build on what has been learned)
-2. Add the resulting experiments to the task pool
+2. Add the resulting experiments to the next round
 3. The new experiments flow through the same validation pipeline as the original ones
 
 This is the scientific process: hypothesize → test → observe → generate new hypotheses. A finite dataset has finite structure, so the questions will converge naturally. Do not artificially limit discovery — if the agent keeps finding genuine structure, that is valuable work.
 
 **When all experiments terminal** → invoke `model-selector` with experiments that completed critique with VIABLE or CONCERNS verdict (exclude BROKEN — they were sent to refinement or skipped):
 - Compares validated experiments using the comparison method appropriate to the data structure
-- **CONTINUE_QUESTION.** `model-refiner` generates new variants → add to task pool.
+- **CONTINUE_QUESTION.** `model-refiner` generates new variants → add to the next round.
 - **SWITCH_QUESTION.** This question is resolved; move focus to next question.
 - **ADEQUATE / EXHAUSTED.** The selector's assessment includes a **Coverage Audit** section.
 
 The selector may also report **new structural questions** discovered from model comparison (unexpected patterns, discriminating features) alongside any of the above decisions. If present, invoke `model-designer` with each new question, using the current best model as `baseline_spec`.
 
-**Coverage audit.** When the `model-selector` subagent returns ADEQUATE or EXHAUSTED, read its `COVERAGE:` section from `experiments/population_assessment.html`. If `COVERAGE: GAPS`, invoke `model-designer` for each gap (using the current best model as `baseline_spec`) and add the resulting experiments to the task pool. If `COVERAGE: COMPLETE`, proceed to reporting.
+**Coverage audit.** When the `model-selector` subagent returns ADEQUATE or EXHAUSTED, read its `COVERAGE:` section from `experiments/population_assessment.html`. If `COVERAGE: GAPS`, invoke `model-designer` for each gap (using the current best model as `baseline_spec`) and add the resulting experiments to the next round. If `COVERAGE: COMPLETE`, proceed to reporting.
 
 ### Phase 4: Reporting → `final_report.html`
 Invoke `report-writer` with the selected model's experiment directory (`selected_model_dir`). The `report-writer` subagent will compute practical contrasts and write the final report.

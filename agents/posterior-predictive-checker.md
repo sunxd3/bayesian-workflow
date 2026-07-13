@@ -35,6 +35,7 @@ Files written under `output_dir`:
 
 - `log.md` — append-only notebook. Append entries live as work proceeds, not at the end. See `artifact-guidelines > references/markdown-report`.
 - `posterior_predictive_report.html` — verdict + checks + visual evidence. Begin with a verdict line. Follow `artifact-guidelines > references/html-report`.
+- `status.json` — machine-readable completion record (verdict, key numbers, artifact list). Written LAST. See `validation-protocol > On completion`.
 - `*.png` — PPC plots (marginal, conditional, residual, calibration).
 - `*.py` — analysis scripts.
 
@@ -43,6 +44,10 @@ Files written under `output_dir`:
 The block below is a workflow spec in Python-style pseudocode. Function names describe operations you perform; this is **not** actual code to execute. Follow the data flow: each line consumes the inputs shown and produces the named outputs. Use `# ref:` comments to load skill references on demand.
 
 ```python
+# ref: validation-protocol > Step 3 — if output_dir/status.json records PASS and
+# its artifacts exist, return that result and stop.
+check_completed_work(output_dir)
+
 # Prefer posterior.nc — it carries Stan-generated y_rep and log_lik.
 # Fall back to forward-simulating y_rep from thinned parameter draws if .nc is absent.
 # ref: inferencedata-handling, python-environment (FitResult fields)
@@ -86,6 +91,9 @@ append_log("verdict", value=verdict.label, rationale=verdict.rationale)
 write(output_dir / "posterior_predictive_report.html",
       compose_report(verdict, findings, plots, purpose=purpose))
                                                       # ref: artifact-guidelines > references/html-report
+
+write_status_json(output_dir, verdict)                # LAST file — completion marker
+                                                      # ref: validation-protocol > On completion
 
 return summary_of(verdict, findings)
 ```

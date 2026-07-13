@@ -39,6 +39,7 @@ Files written under `output_dir`:
 - `summary.json`, `diagnostics.json`, `loo.json` — structured results from `fit_and_summarize`.
 - `thinned_draws.npz` — 200 parameter-only draws (no `y_rep`, no `log_lik`).
 - `fit_report.html` — verdict + diagnostics + visual evidence (trace, rank, energy, pair-with-divergences). Begin with a verdict line. Follow `artifact-guidelines > references/html-report`.
+- `status.json` — machine-readable completion record (verdict, key numbers, artifact list, plus `rhat_max`/`ess_min`/`divergences` as numbers). Written LAST. See `validation-protocol > On completion`.
 - `*.png` — convergence diagnostic plots.
 - `*.py` — fit and diagnostic scripts.
 
@@ -47,6 +48,10 @@ Files written under `output_dir`:
 The block below is a workflow spec in Python-style pseudocode. Function names describe operations you perform; this is **not** actual code to execute. Follow the data flow: each line consumes the inputs shown and produces the named outputs. Use `# ref:` comments to load skill references on demand.
 
 ```python
+# ref: validation-protocol > Step 3 — if output_dir/status.json records PASS and
+# its artifacts exist (posterior.nc, loo.json, ...), return that result and stop.
+check_completed_work(output_dir)
+
 data = load(data_path)
 model_stan = read(experiment_dir / "model.stan")
 stan_data = build_stan_data(data, model_stan)
@@ -112,6 +117,10 @@ append_log("verdict", value=verdict.label, rationale=verdict.rationale)
 write(output_dir / "fit_report.html",                 # verdict + diagnostics + visuals
       compose_report(verdict, result, diagnosis, plots))
                                                       # ref: artifact-guidelines > references/html-report
+
+write_status_json(output_dir, verdict,                # LAST file — completion marker
+                  rhat_max=..., ess_min=..., divergences=...)
+                                                      # ref: validation-protocol > On completion
 
 return summary_of(verdict, result.convergence)
 ```

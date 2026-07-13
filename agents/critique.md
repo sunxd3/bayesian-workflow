@@ -35,6 +35,7 @@ Files written under `<experiment_dir>/critique/` (create the directory if needed
 
 - `log.md` — append-only notebook. Append entries live as work proceeds, not at the end. See `artifact-guidelines > references/markdown-report`.
 - `critique_report.html` — verdict + statistical + domain + framework assessment + suggestions. Begin with `DECISION: VIABLE` / `CONCERNS` / `BROKEN`. Follow `model-critique > references/decision` for the section template and `artifact-guidelines > references/html-report` for the format.
+- `status.json` — machine-readable completion record (verdict, key numbers, artifact list, plus `suggestions` and any `new_structural_question`). Written LAST. See `validation-protocol > On completion`. For critique, any recorded verdict is terminal for the completed-work check — a critiqued experiment is never re-critiqued in place.
 - `*.png` — diagnostic plots generated during assessment (residuals against unused covariates, contraction summaries, custom domain checks).
 - `*.py` — assessment scripts.
 
@@ -43,6 +44,10 @@ Files written under `<experiment_dir>/critique/` (create the directory if needed
 The block below is a workflow spec in Python-style pseudocode. Function names describe operations you perform; this is **not** actual code to execute. Follow the data flow: each line consumes the inputs shown and produces the named outputs. Use `# ref:` comments to load skill references on demand.
 
 ```python
+# ref: validation-protocol > Step 3 — if <experiment_dir>/critique/status.json records
+# any verdict and its artifacts exist, return that result and stop.
+check_completed_work(experiment_dir / "critique")
+
 plan = read(experiment_plan_path)                     # purpose, key quantities, validation strategy
 eda = read_html(eda_report_path)                      # domain hints, residual cues
 data = load(data_path)
@@ -73,6 +78,7 @@ if stat_findings.has_unexplained_structure:
 if stat_findings.is_broken:
     verdict = decide_broken(stat_findings)
     write_report(experiment_dir / "critique" / "critique_report.html", verdict, stat_findings)
+    write_status_json(experiment_dir / "critique", verdict)   # ref: validation-protocol > On completion
     append_log("verdict", value="BROKEN", rationale=verdict.rationale)
     return summary_of(verdict)
 
@@ -103,6 +109,11 @@ write(experiment_dir / "critique" / "critique_report.html",
       compose_report(verdict, stat_findings, domain_findings, framework_findings))
                                                       # ref: model-critique > references/decision (templates)
                                                       # ref: artifact-guidelines > references/html-report
+
+write_status_json(experiment_dir / "critique",        # LAST file — completion marker
+                  verdict, suggestions=verdict.suggestions,
+                  new_structural_question=verdict.new_question)
+                                                      # ref: validation-protocol > On completion
 
 return summary_of(verdict)
 ```
