@@ -7,6 +7,16 @@ an update; the milestones below summarize the significant changes.
 ## Unreleased
 
 ### Changed
+- **Skills grouped by phase.** `skills/` is now `skills/<group>/<name>/`
+  with groups `core`, `explore`, `design`, `fit`, `evaluate`, `report`. Each
+  group is registered as a skill root in `plugin.json` because the loader only
+  finds `SKILL.md` one level below a root. Skill names are unchanged, so
+  agents and scripts needed no edits.
+- `/bayesian-workflow:eda` renamed to `/bayesian-workflow:explore`. The
+  command and the `eda` skill both loaded as `bayesian-workflow:eda`.
+- Folder READMEs in `skills/`, `workflows/`, and `tests/` describe what each
+  folder holds and how the loader treats it. `agents/` and `commands/` get
+  none: every `.md` file there is loaded as a component.
 - **Script-led workflow.** The from-scratch, script-led rebuild that was
   developed on the `dynamic-workflow` branch is now the main line.
   Deterministic control flow lives in four Workflow scripts (`explore.js`,
