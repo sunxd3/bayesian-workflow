@@ -10,7 +10,7 @@
       "name": "bayesian-workflow",
       "source": {
         "source": "github",
-        "repo": "sunxd3/bayesian-statistician-plugin"
+        "repo": "sunxd3/bayesian-workflow"
       },
       "description": "Script-led Bayesian workflow: deterministic control flow in Workflow scripts, judgment in schema-constrained subagents, multi-agent report writing"
     }

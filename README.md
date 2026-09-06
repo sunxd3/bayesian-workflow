@@ -41,7 +41,7 @@ flowchart TD
 ## Install
 
 ```
-/plugin marketplace add sunxd3/bayesian-statistician-plugin
+/plugin marketplace add sunxd3/bayesian-workflow
 /plugin install bayesian-workflow@sunxd3-plugins
 ```
 

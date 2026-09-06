@@ -7,8 +7,8 @@
     "name": "Xianda Sun",
     "email": "sunxdt@gmail.com"
   },
-  "homepage": "https://github.com/sunxd3/bayesian-statistician-plugin",
-  "repository": "https://github.com/sunxd3/bayesian-statistician-plugin",
+  "homepage": "https://github.com/sunxd3/bayesian-workflow",
+  "repository": "https://github.com/sunxd3/bayesian-workflow",
   "license": "MIT",
   "skills": [
     "./skills/core",
