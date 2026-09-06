@@ -7,25 +7,35 @@ Currently the plugin is configured to use Stan and ArviZ.
 
 When run end to end:
 
-```
-explore:  profile data → EDA analysts in parallel → synthesize one report
-          -- user confirms the analysis goal --
-design:   frame the analysis → one designer per structural question → dedup into an experiment plan
-          -- user approves the plan --
-develop:
-  queue = experiments from the plan
-  repeat while queue not empty (up to maxRounds):
-    for each experiment in queue, in parallel:
-      for stage in [prior predictive check, fake-data recovery, fit, posterior predictive check]:
-        if stage FAILS and refine budget left: refiner writes a FIX variant, restart from the first stage
-        if stage FAILS and budget spent:      skip the experiment
-      critic → VIABLE | CONCERNS | BROKEN
-    strategist → close questions, propose EXPLORE variants and new questions, or stop
-    guards drop proposals that hit the plateau rule, explore budget, new-question slots, or experiment cap
-    queue = EXPLORE variants (refiner) + experiments for new questions (designer)
-  selector → ranking + coverage audit; if coverage gaps: design and run them once, select again
-report:   outline → fact sheet + figures → sections in parallel → assemble
-          repeat up to maxRevisions: critic → SHIP, or REVISE and the assembler revises
+```mermaid
+flowchart TD
+  subgraph E ["Explore"]
+    P["profile data"] --> A["EDA analysts, in parallel"] --> S1["synthesize one report"]
+  end
+  S1 --> G1{{"user confirms the goal"}}
+  subgraph D ["Design"]
+    F["frame the analysis"] --> DQ["one designer per structural question"] --> S2["dedup into an experiment plan"]
+  end
+  G1 --> F
+  S2 --> G2{{"user approves the plan"}}
+  subgraph V ["Develop"]
+    Q["experiment queue"] --> ST["stages: prior predictive check,<br/>fake-data recovery, fit,<br/>posterior predictive check"]
+    ST -->|"a stage fails, refine budget left"| FIX["refiner: FIX variant"] --> ST
+    ST -->|"a stage fails, budget spent"| SK["skip experiment"]
+    ST -->|"all pass"| C["critic: VIABLE / CONCERNS / BROKEN"]
+    C --> STR["strategist: close questions, propose<br/>EXPLORE variants and new questions, or stop"]
+    SK --> STR
+    STR -->|"proposals that pass the guards<br/>(plateau, explore budget, question slots, experiment cap)"| NW["refiner: EXPLORE variants<br/>designer: new questions"] --> Q
+    STR -->|"stop, nothing proposed, or round cap"| SEL["selector: ranking + coverage audit"]
+    SEL -->|"coverage gaps, once"| GP["design and run gap experiments"] --> SEL
+  end
+  G2 --> Q
+  subgraph R ["Report"]
+    O["outline"] --> FS["fact sheet + figures"] --> W["section writers, in parallel"] --> AS["assemble"] --> CR["critic"]
+    CR -->|"REVISE, revisions left"| RV["assembler revises"] --> CR
+    CR -->|"SHIP, or revisions spent"| OUT["final report"]
+  end
+  SEL -->|"selected model"| O
 ```
 
 ## Install
