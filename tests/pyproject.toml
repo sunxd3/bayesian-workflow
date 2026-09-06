@@ -28,7 +28,7 @@ ignore = ["E501"]
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
-include = [".", "../skills/fit-pipeline/references"]
+include = [".", "../skills/fit/fit-pipeline/references"]
 
 [tool.pytest.ini_options]
 testpaths = ["."]

@@ -10,6 +10,14 @@
   "homepage": "https://github.com/sunxd3/bayesian-statistician-plugin",
   "repository": "https://github.com/sunxd3/bayesian-statistician-plugin",
   "license": "MIT",
+  "skills": [
+    "./skills/core",
+    "./skills/explore",
+    "./skills/design",
+    "./skills/fit",
+    "./skills/evaluate",
+    "./skills/report"
+  ],
   "keywords": [
     "bayesian",
     "statistics",

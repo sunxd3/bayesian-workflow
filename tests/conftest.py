@@ -1,6 +1,6 @@
 """Fixtures for testing the fit-pipeline reference scripts.
 
-The scripts under skills/fit-pipeline/references/ are what agents copy and
+The scripts under skills/fit/fit-pipeline/references/ are what agents copy and
 adapt; they are loaded here by path (there is no package) and exercised two
 ways: pure tests on synthetic InferenceData (no CmdStan) and integration tests
 that compile and sample the Stan programs under tests/stan/ for real.
@@ -24,7 +24,7 @@ import numpy as np
 import pytest
 
 TESTS_DIR = Path(__file__).resolve().parent
-REFERENCES_DIR = TESTS_DIR.parent / "skills" / "fit-pipeline" / "references"
+REFERENCES_DIR = TESTS_DIR.parent / "skills" / "fit" / "fit-pipeline" / "references"
 STAN_DIR = TESTS_DIR / "stan"
 FIXTURES_DIR = TESTS_DIR / "fixtures"
 

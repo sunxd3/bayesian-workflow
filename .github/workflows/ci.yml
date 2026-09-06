@@ -56,8 +56,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: tests/uv.lock
       - run: uv sync
-      - name: ruff (tests + skills/fit-pipeline/references)
-        run: uv run ruff check --config pyproject.toml --output-format=github . ../skills/fit-pipeline/references
+      - name: ruff (tests + skills/fit/fit-pipeline/references)
+        run: uv run ruff check --config pyproject.toml --output-format=github . ../skills/fit/fit-pipeline/references
       - name: pyright
         run: uv run pyright
 
