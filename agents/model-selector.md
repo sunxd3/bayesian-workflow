@@ -2,7 +2,7 @@
 name: model-selector
 description: >
   Final comparison of the validated model population: goal-aware ranking, ADEQUATE/EXHAUSTED assessment, and the coverage audit against the EDA's modeling implications.
-  SIGNATURE: (experiment_dirs: List[Path], experiment_plan_path: Path, eda_report_path: Path, output_dir: Path, question ledger inline)
+  SIGNATURE: (experiment_dirs: List[Path], experiment_plan_path: Path, eda_report_path: Path, output_dir: Path, ranking_metric?: Text, data_path?: Path)
 skills:
   - validation-protocol
   - python-environment

@@ -167,7 +167,7 @@ log(`Framing: ${plan.purpose}; ${questions.length} structural questions; ranking
 const saneDesign = (r, outDir) =>
   r && typeof r.proposal_path === 'string' && r.proposal_path.startsWith(outDir)
 
-async function runDesigner(q, i) {
+async function runDesigner(q) {
   const outDir = `${DESIGN_DIR}/designer_${q.id}`
   const siblings = questions.filter((s) => s.id !== q.id).map((s) => `${s.id}: ${s.statement}`).join('\n')
   const prompt = `question_id: ${q.id}
@@ -199,7 +199,7 @@ NOTE: a previous attempt returned an invalid structured result (placeholder valu
   return { question: q, design: r }
 }
 
-const designs = (await parallel(questions.map((q, i) => () => runDesigner(q, i)))).filter((d) => d && d.design)
+const designs = (await parallel(questions.map((q) => () => runDesigner(q)))).filter((d) => d && d.design)
 if (!designs.length) throw new Error('all designers lost — no experiments to run')
 
 // Canonical ids + caps + baseline flags — pure policy, applied in code.

@@ -57,7 +57,7 @@ export const meta = {
 
 const A = typeof args === 'string' ? JSON.parse(args) : args
 if (!A || !A.projectDir || !A.dataPath || !Array.isArray(A.questions) || !Array.isArray(A.experiments) || A.experiments.length === 0) {
-  throw new Error('args must be {projectDir, dataPath, questions:[{id,statement}], experiments:[{id,questionId,spec,baseline?,context?}], planPath?, edaReportPath?, limits?}')
+  throw new Error('args must be {projectDir, dataPath, questions:[{id,statement}], experiments:[{id,questionId,spec,baseline?,context?}], planPath?, edaReportPath?, metric?, bounds?, limits?}')
 }
 const PLAN = A.planPath || `${A.projectDir}/design/experiment_plan.md`
 const EDA = A.edaReportPath || `${A.projectDir}/eda/eda_report.html`
@@ -578,7 +578,7 @@ function nextId(rootId, kind) {
 }
 const nextVariantId = (rootId) => nextId(rootId, 'v')
 
-async function applyStrategy(strategy, round) {
+async function applyStrategy(strategy) {
   for (const c of strategy.close) {
     const q = ledger.questions[c.question_id]
     if (!q) { log(`✂ close '${c.question_id}' ignored: unknown question`); continue }
@@ -775,7 +775,7 @@ Assess the round, then decide: which questions to close, which EXPLORE variants 
   }
   if (strategy.framework_concern) log(`framework concern: ${strategy.framework_concern}`)
 
-  const newWork = await applyStrategy(strategy, round)
+  const newWork = await applyStrategy(strategy)
   newWork.forEach(registerExperiment)
   queue.push(...newWork)
 
