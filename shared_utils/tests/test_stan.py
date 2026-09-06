@@ -77,13 +77,13 @@ class TestFitModel:
         """fit_model() raises TypeError for callable data."""
         model = MagicMock()
         with pytest.raises(TypeError, match="data cannot be a callable"):
-            fit_model(model, lambda: {"N": 1})
+            fit_model(model, lambda: {"N": 1})  # pyright: ignore[reportArgumentType]
 
     def test_raises_for_invalid_data_type(self):
         """fit_model() raises TypeError for non-dict/Mapping/path data."""
         model = MagicMock()
         with pytest.raises(TypeError, match="data must be a dict"):
-            fit_model(model, 42)
+            fit_model(model, 42)  # pyright: ignore[reportArgumentType]
 
     def test_accepts_string_path_data(self):
         """fit_model() accepts string paths as data."""
@@ -122,7 +122,6 @@ class TestFitModel:
 
             # If /workspace doesn't exist locally, output_dir stays None
             fit_model(model, {"N": 1}, output_dir=None)
-            call_kwargs = model.sample.call_args[1]
             # On this machine, /workspace likely doesn't exist, so output_dir is None
             # The important thing is that model.sample was called
             model.sample.assert_called_once()

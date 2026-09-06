@@ -92,6 +92,39 @@ an update; the milestones below summarize the significant changes.
   `/bayesian-workflow:eda` now runs `explore.js` (with a single-analyst +
   synthesist fallback when the Workflow tool is unavailable).
 
+### Added
+- **Real-CmdStan integration suite for `shared_utils`**
+  (`shared_utils/tests/integration/`, marker `integration`). Six small Stan
+  programs under `tests/stan/` are compiled and sampled for real: the tests
+  pin the exact artifact file set and JSON layouts the workflow audits,
+  recover known parameters, check posterior-predictive coverage, prove that
+  Neal's funnel is flagged as divergent, that LOO ranks a Student-t
+  likelihood above a normal one on heavy-tailed data by more than 2 SE of the
+  paired difference, and run the three `python-environment` recipes as
+  written. With `SHARED_UTILS_REQUIRE_CMDSTAN=1` a missing toolchain fails
+  instead of skipping.
+- **CI** now has six jobs: manifest validation, workflow-script parse check,
+  ruff + pyright, unit tests on Python 3.10 and 3.13, and the integration
+  tier with CmdStan (pinned, cached) and cached compiled test models.
+- `fit_and_summarize` accepts `observed_data`, `coords`, `dims`,
+  `log_likelihood`, and `posterior_predictive` (forwarded to `to_arviz`);
+  `to_arviz` accepts `observed_data`. `FitResult.loo_dict()` is the single
+  source for the LOO fields written to both `summary.json` and `loo.json`.
+
+### Fixed
+- `fit_model` forwarded `adapt_delta` even with `adapt_engaged=False`, which
+  CmdStanPy 1.3 rejects — so the prior-predictive and fake-data recipes in
+  the `python-environment` skill (GQ-only `fixed_param` runs) failed outright.
+  Found by the integration suite.
+- `to_arviz` / `to_arviz_prior` never saw the fit's variable names on
+  CmdStanPy >= 1.2 (`metadata.stan_vars` replaced `stan_vars_cols`), so
+  `posterior_predictive` defaulted to `y_rep` unconditionally and conversion
+  crashed for any model without it. Found by the integration suite.
+- `fit_and_summarize` wrote `posterior.nc` without an `observed_data` group,
+  contradicting the model-fitter contract that PPC and LOO-PIT rely on.
+- `summary.json`'s `artifacts` manifest listed only `posterior.nc`; it now
+  lists every file of the save, itself included.
+
 ### Removed
 - `workflows/validate-experiments.js` (one Phase 3 round per call) —
   superseded by `develop.js`, which contains the same per-experiment

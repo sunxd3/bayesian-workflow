@@ -20,7 +20,6 @@ from shared_utils.io import (
     write_json,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helper: create a mock fit that passes isinstance(fit, CmdStanMCMC)
 # ---------------------------------------------------------------------------
@@ -104,16 +103,30 @@ class TestWriteJson:
 # ---------------------------------------------------------------------------
 
 class TestStanVarNames:
-    """Tests for _stan_var_names."""
+    """Tests for _stan_var_names.
+
+    Fakes use ``spec=[...]`` so only the declared attributes exist — a bare
+    MagicMock would answer every ``getattr`` with a truthy mock and hide which
+    API the function actually read.
+    """
+
+    def test_from_metadata_stan_vars(self):
+        """CmdStanPy >= 1.2: names live in fit.metadata.stan_vars."""
+        fit = MagicMock(spec=["metadata"])
+        fit.metadata = MagicMock(spec=["stan_vars"])
+        fit.metadata.stan_vars = {"mu": object(), "y_rep": object()}
+        assert _stan_var_names(fit) == {"mu", "y_rep"}
 
     def test_from_direct_attr(self):
-        fit = MagicMock()
+        """Legacy: fit.stan_vars_cols."""
+        fit = MagicMock(spec=["stan_vars_cols"])
         fit.stan_vars_cols = {"mu": [0], "tau": [1]}
         assert _stan_var_names(fit) == {"mu", "tau"}
 
     def test_from_metadata(self):
-        fit = MagicMock(spec=[])  # no stan_vars_cols directly
-        fit.metadata = MagicMock()
+        """Legacy: fit.metadata.stan_vars_cols."""
+        fit = MagicMock(spec=["metadata"])
+        fit.metadata = MagicMock(spec=["stan_vars_cols"])
         fit.metadata.stan_vars_cols = {"alpha": [0], "beta": [1]}
         assert _stan_var_names(fit) == {"alpha", "beta"}
 
@@ -135,6 +148,7 @@ class TestSanitizeCoordsDims:
 
     def test_numpy_array_to_list(self):
         result = _sanitize_coords_dims({"school": np.array([0, 1, 2])})
+        assert result is not None
         assert result == {"school": [0, 1, 2]}
         assert isinstance(result["school"], list)
 
@@ -177,7 +191,7 @@ class TestToArviz:
     def test_raises_for_non_cmdstan(self):
         """to_arviz() raises ValueError for non-CmdStanMCMC fit."""
         with pytest.raises(ValueError, match="fit must be CmdStanMCMC"):
-            to_arviz("not a fit")
+            to_arviz("not a fit")  # pyright: ignore[reportArgumentType]
 
     @patch("shared_utils.io.az.from_cmdstanpy")
     @patch("shared_utils.io.CmdStanMCMC", _MockCmdStanMCMC)
@@ -186,7 +200,7 @@ class TestToArviz:
         mock_from.return_value = MagicMock(spec=az.InferenceData)
         fit = _make_mock_fit({"mu": [0], "tau": [1], "y_rep": [2]})
 
-        to_arviz(fit, posterior_predictive=["y_rep", "nonexistent"])
+        to_arviz(fit, posterior_predictive=["y_rep", "nonexistent"])  # pyright: ignore[reportArgumentType]
 
         call_kwargs = mock_from.call_args[1]
         assert call_kwargs["posterior_predictive"] == ["y_rep"]
@@ -198,7 +212,7 @@ class TestToArviz:
         mock_from.return_value = MagicMock(spec=az.InferenceData)
         fit = _make_mock_fit({"mu": [0], "y_rep": [1]})
 
-        to_arviz(fit)
+        to_arviz(fit)  # pyright: ignore[reportArgumentType]
 
         call_kwargs = mock_from.call_args[1]
         assert call_kwargs["posterior_predictive"] == ["y_rep"]
@@ -211,7 +225,7 @@ class TestToArviz:
         fit = _make_mock_fit({"mu": [0]})
 
         to_arviz(
-            fit,
+            fit,  # pyright: ignore[reportArgumentType]
             coords={"school": np.array([0, 1, 2])},
             dims={"mu": np.array(["school"])},
         )
@@ -227,7 +241,7 @@ class TestToArviz:
         mock_from.return_value = MagicMock(spec=az.InferenceData)
         fit = _make_mock_fit({"mu": [0], "tau": [1]})
 
-        to_arviz(fit)
+        to_arviz(fit)  # pyright: ignore[reportArgumentType]
 
         call_kwargs = mock_from.call_args[1]
         assert call_kwargs["posterior_predictive"] is None
@@ -243,7 +257,7 @@ class TestToArvizPrior:
     def test_raises_for_non_cmdstan(self):
         """to_arviz_prior() raises ValueError for non-CmdStanMCMC fit."""
         with pytest.raises(ValueError, match="fit must be CmdStanMCMC"):
-            to_arviz_prior("not a fit")
+            to_arviz_prior("not a fit")  # pyright: ignore[reportArgumentType]
 
     @patch("shared_utils.io.az.from_cmdstanpy")
     @patch("shared_utils.io.CmdStanMCMC", _MockCmdStanMCMC)
@@ -252,7 +266,7 @@ class TestToArvizPrior:
         mock_from.return_value = MagicMock(spec=az.InferenceData)
         fit = _make_mock_fit({"mu": [0]})
 
-        to_arviz_prior(fit)
+        to_arviz_prior(fit)  # pyright: ignore[reportArgumentType]
 
         call_kwargs = mock_from.call_args[1]
         assert call_kwargs["prior"] is fit
@@ -264,7 +278,7 @@ class TestToArvizPrior:
         mock_from.return_value = MagicMock(spec=az.InferenceData)
         fit = _make_mock_fit({"mu": [0], "y_rep": [1]})
 
-        to_arviz_prior(fit, prior_predictive=["y_rep", "nonexistent"])
+        to_arviz_prior(fit, prior_predictive=["y_rep", "nonexistent"])  # pyright: ignore[reportArgumentType]
 
         call_kwargs = mock_from.call_args[1]
         assert call_kwargs["prior_predictive"] == ["y_rep"]
@@ -276,7 +290,7 @@ class TestToArvizPrior:
         mock_from.return_value = MagicMock(spec=az.InferenceData)
         fit = _make_mock_fit({"mu": [0], "y_rep": [1]})
 
-        to_arviz_prior(fit)
+        to_arviz_prior(fit)  # pyright: ignore[reportArgumentType]
 
         call_kwargs = mock_from.call_args[1]
         assert call_kwargs["prior_predictive"] == ["y_rep"]
@@ -289,7 +303,7 @@ class TestToArvizPrior:
         fit = _make_mock_fit({"mu": [0]})
 
         to_arviz_prior(
-            fit,
+            fit,  # pyright: ignore[reportArgumentType]
             coords={"idx": np.array([0, 1])},
             dims={"mu": np.array(["idx"])},
         )

@@ -42,6 +42,10 @@ typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "integration: compiles and samples real Stan models via CmdStan (slow; skipped when CmdStan is absent unless SHARED_UTILS_REQUIRE_CMDSTAN=1)",
+]
 
 [dependency-groups]
 dev = [

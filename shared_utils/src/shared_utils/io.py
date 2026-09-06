@@ -11,7 +11,7 @@ import arviz as az
 import numpy as np
 from cmdstanpy import CmdStanMCMC
 
-from .paths import ensure_dir, resolve_path
+from .paths import resolve_path
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -54,19 +54,24 @@ def write_json(
 
 
 def _stan_var_names(fit: CmdStanMCMC) -> set[str]:
-    """Get variable names from a CmdStanMCMC fit."""
-    for attr in ("stan_vars_cols",):
-        if hasattr(fit, attr):
+    """Get the Stan variable names a fit declares, or an empty set if unknown.
+
+    CmdStanPy >= 1.2 exposes them as ``fit.metadata.stan_vars``; older
+    releases used ``stan_vars_cols`` (on the fit or its metadata). An empty
+    set means "unknown" and disables downstream variable filtering.
+    """
+    metadata = getattr(fit, "metadata", None)
+    for holder in (metadata, fit):
+        if holder is None:
+            continue
+        for attr in ("stan_vars", "stan_vars_cols"):
+            variables = getattr(holder, attr, None)
+            if not variables:
+                continue
             try:
-                return set(getattr(fit, attr).keys())
+                return set(variables.keys())
             except Exception:
                 continue
-    metadata = getattr(fit, "metadata", None)
-    if metadata is not None and hasattr(metadata, "stan_vars_cols"):
-        try:
-            return set(metadata.stan_vars_cols.keys())
-        except Exception:
-            pass
     return set()
 
 
@@ -110,6 +115,7 @@ def to_arviz(
     fit: CmdStanMCMC,
     *,
     y_obs: np.ndarray | None = None,
+    observed_data: dict[str, Any] | None = None,
     log_likelihood: str = "log_lik",
     posterior_predictive: list[str] | str | None = None,
     coords: dict | None = None,
@@ -124,7 +130,9 @@ def to_arviz(
 
     Args:
         fit: CmdStanMCMC fit object
-        y_obs: Observed y values (for observed_data group)
+        y_obs: Observed y values, stored as ``observed_data["y"]`` (shorthand)
+        observed_data: Arrays for the observed_data group, keyed by name. Merged
+            with ``y_obs`` (an explicit ``"y"`` here wins).
         log_likelihood: Name of log_lik variable in Stan model
         posterior_predictive: Names of posterior predictive variables
         coords: Coordinate labels (numpy arrays will be converted to lists)
@@ -139,7 +147,9 @@ def to_arviz(
     if not isinstance(fit, CmdStanMCMC):
         raise ValueError(f"fit must be CmdStanMCMC, got {type(fit).__name__}")
 
-    observed_data = {"y": y_obs} if y_obs is not None else None
+    observed: dict[str, Any] = dict(observed_data) if observed_data else {}
+    if y_obs is not None:
+        observed.setdefault("y", y_obs)
     available = _stan_var_names(fit)
 
     if posterior_predictive is None:
@@ -170,7 +180,7 @@ def to_arviz(
         fit,
         log_likelihood=log_likelihood_name,
         posterior_predictive=posterior_predictive,
-        observed_data=observed_data,
+        observed_data=observed or None,
         coords=coords,
         dims=dims,
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +16,7 @@ def compile_model(stan_file: Path | str) -> CmdStanModel:
 
 def fit_model(
     model: CmdStanModel,
-    data: dict,
+    data: Mapping[str, Any] | str | Path,
     *,
     chains: int = 4,
     iter_warmup: int = 1000,
@@ -35,7 +36,9 @@ def fit_model(
 
     Args:
         model: Compiled Stan model
-        data: Dict of Stan data (must be dict, not function)
+        data: Stan data — a mapping of variable name to value, or the path
+            to a JSON data file. Callables are rejected (a common mistake is
+            passing a data-building function instead of calling it).
         chains: Number of MCMC chains
         iter_warmup: Number of warmup iterations (matches CmdStanPy API)
         iter_sampling: Number of sampling iterations (matches CmdStanPy API)
@@ -58,10 +61,8 @@ def fit_model(
     # CmdStanPy accepts dicts, Mappings, and JSON file paths (str/Path)
     if callable(data):
         raise TypeError(f"data cannot be a callable, got {type(data).__name__}")
-    if not isinstance(data, (dict, str, Path)):
-        from collections.abc import Mapping
-        if not isinstance(data, Mapping):
-            raise TypeError(f"data must be a dict, Mapping, or file path, got {type(data).__name__}")
+    if not isinstance(data, (Mapping, str, Path)):
+        raise TypeError(f"data must be a dict, Mapping, or file path, got {type(data).__name__}")
 
     # Validate warmup when adaptation is enabled (skip for fixed_param mode)
     if not fixed_param and adapt_engaged and iter_warmup <= 0:
@@ -76,12 +77,17 @@ def fit_model(
             workspace_output.mkdir(exist_ok=True)
             output_dir = workspace_output
 
+    # CmdStanPy rejects any adapt_* setting when adaptation is disabled, and a
+    # fixed_param run (GQ-only prior / fake-data simulation) never adapts —
+    # so only forward adapt_delta when it can apply.
+    adapt_delta_arg = adapt_delta if (adapt_engaged and not fixed_param) else None
+
     return model.sample(
         data=data,
         chains=chains,
         iter_warmup=iter_warmup,
         iter_sampling=iter_sampling,
-        adapt_delta=adapt_delta,
+        adapt_delta=adapt_delta_arg,
         adapt_engaged=adapt_engaged,
         show_progress=show_progress,
         show_console=show_console,

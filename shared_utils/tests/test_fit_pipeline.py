@@ -5,18 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import arviz as az
 import numpy as np
 import pytest
 
+from shared_utils.diagnostics import ConvergenceResult, LOOResult
 from shared_utils.fit_pipeline import (
     FitResult,
     _thin_draws,
     cleanup_csv_files,
     fit_and_summarize,
 )
-from shared_utils.diagnostics import ConvergenceResult, LOOResult
-
 
 # ---------------------------------------------------------------------------
 # cleanup_csv_files
@@ -265,7 +263,8 @@ class TestFitAndSummarize:
         assert isinstance(result.convergence, ConvergenceResult)
         assert result.convergence.n_divergent == 0
         mock_fit_model.assert_called_once()
-        mock_to_arviz.assert_called_once_with(mock_fit)
+        mock_to_arviz.assert_called_once()
+        assert mock_to_arviz.call_args.args == (mock_fit,)
         mock_cleanup.assert_called_once_with(mock_fit)
 
     @patch("shared_utils.fit_pipeline.cleanup_csv_files")
@@ -292,9 +291,7 @@ class TestFitAndSummarize:
         mock_cleanup.return_value = 0
 
         model = MagicMock()
-        result = fit_and_summarize(
-            model, {"N": 1}, save_dir=tmp_path, n_thinned_draws=50
-        )
+        fit_and_summarize(model, {"N": 1}, save_dir=tmp_path, n_thinned_draws=50)
 
         assert (tmp_path / "summary.json").exists()
         assert (tmp_path / "diagnostics.json").exists()

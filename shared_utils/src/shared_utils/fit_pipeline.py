@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import arviz as az
 import numpy as np
 import pandas as pd
 from cmdstanpy import CmdStanModel
-
-import arviz as az
 
 from .diagnostics import ConvergenceResult, LOOResult, check_convergence, compute_loo
 from .io import to_arviz, write_json
@@ -34,6 +34,20 @@ class FitResult:
     artifacts: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
+    def loo_dict(self) -> dict[str, float | int] | None:
+        """LOO results as the flat dict written to loo.json (None if no LOO)."""
+        if self.loo is None:
+            return None
+        return {
+            "elpd_loo": self.loo.elpd_loo,
+            "se": self.loo.se,
+            "p_loo": self.loo.p_loo,
+            "k_good": self.loo.k_good,
+            "k_ok": self.loo.k_ok,
+            "k_bad": self.loo.k_bad,
+            "k_very_bad": self.loo.k_very_bad,
+        }
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to a JSON-serializable dictionary."""
         result: dict[str, Any] = {
@@ -50,16 +64,9 @@ class FitResult:
             "artifacts": self.artifacts,
             "warnings": self.warnings,
         }
-        if self.loo is not None:
-            result["loo"] = {
-                "elpd_loo": self.loo.elpd_loo,
-                "se": self.loo.se,
-                "p_loo": self.loo.p_loo,
-                "k_good": self.loo.k_good,
-                "k_ok": self.loo.k_ok,
-                "k_bad": self.loo.k_bad,
-                "k_very_bad": self.loo.k_very_bad,
-            }
+        loo = self.loo_dict()
+        if loo is not None:
+            result["loo"] = loo
         return result
 
     def save(self, output_dir: Path | str) -> list[str]:
@@ -71,36 +78,29 @@ class FitResult:
         Returns list of saved file paths.
         """
         output_dir = ensure_dir(output_dir)
-        saved: list[str] = []
-
         summary_path = output_dir / "summary.json"
-        write_json(summary_path, self.to_dict())
-        saved.append(str(summary_path))
-
         diag_path = output_dir / "diagnostics.json"
-        write_json(diag_path, self.diagnostics)
-        saved.append(str(diag_path))
+        loo = self.loo_dict()
+        loo_path = output_dir / "loo.json" if loo is not None else None
+        draws_path = (
+            output_dir / "thinned_draws.npz" if self.thinned_draws is not None else None
+        )
+        saved = [str(p) for p in (summary_path, diag_path, loo_path, draws_path) if p]
 
-        if self.loo is not None:
-            loo_path = output_dir / "loo.json"
-            write_json(loo_path, {
-                "elpd_loo": self.loo.elpd_loo,
-                "se": self.loo.se,
-                "p_loo": self.loo.p_loo,
-                "k_good": self.loo.k_good,
-                "k_ok": self.loo.k_ok,
-                "k_bad": self.loo.k_bad,
-                "k_very_bad": self.loo.k_very_bad,
-            })
-            saved.append(str(loo_path))
-
-        if self.thinned_draws is not None:
-            draws_path = output_dir / "thinned_draws.npz"
-            np.savez_compressed(str(draws_path), **self.thinned_draws)
-            saved.append(str(draws_path))
-
+        # Register the files BEFORE writing summary.json so the manifest it
+        # carries lists every artifact of this save, itself included.
         existing = set(self.artifacts)
         self.artifacts.extend(p for p in saved if p not in existing)
+
+        write_json(summary_path, self.to_dict())
+        write_json(diag_path, self.diagnostics)
+        if loo_path is not None:
+            write_json(loo_path, loo)
+        if draws_path is not None and self.thinned_draws is not None:
+            np.savez_compressed(
+                str(draws_path),
+                **self.thinned_draws,  # pyright: ignore[reportArgumentType]
+            )
         return saved
 
 
@@ -226,7 +226,7 @@ _cleanup_csv_files = cleanup_csv_files
 
 def fit_and_summarize(
     model: CmdStanModel,
-    data: dict,
+    data: Mapping[str, Any] | str | Path,
     *,
     model_name: str = "model",
     chains: int = 4,
@@ -237,6 +237,11 @@ def fit_and_summarize(
     cleanup_csvs: bool = True,
     save_netcdf: bool = False,
     save_dir: Path | str | None = None,
+    observed_data: dict[str, Any] | None = None,
+    log_likelihood: str = "log_lik",
+    posterior_predictive: list[str] | str | None = None,
+    coords: dict | None = None,
+    dims: dict | None = None,
     **sample_kwargs: Any,
 ) -> FitResult:
     """Fit a Stan model and return a comprehensive result with diagnostics.
@@ -267,6 +272,17 @@ def fit_and_summarize(
             Rule of thumb: save_netcdf=True for main data fits, False for probe
             runs, simulation recovery, and prior predictive checks.
         save_dir: If provided, save results to this directory
+        observed_data: Arrays for the InferenceData ``observed_data`` group.
+            Defaults to ``{"y": data["y"]}`` when the Stan data mapping has a
+            ``y`` entry, so the canonical model layout gets its observed data
+            attached (needed downstream for PPC overlays and LOO-PIT). Pass
+            explicitly when the outcome has another name, or ``{}`` to attach
+            nothing.
+        log_likelihood: Name of the pointwise log-likelihood variable.
+        posterior_predictive: Posterior predictive variable names (default:
+            ``["y_rep"]`` when the model declares it).
+        coords: ArviZ coordinate labels, forwarded to ``to_arviz``.
+        dims: ArviZ dimension names per variable, forwarded to ``to_arviz``.
         **sample_kwargs: Additional arguments passed to fit_model()
 
     Returns:
@@ -293,7 +309,16 @@ def fit_and_summarize(
         )
 
         # Convert to ArviZ
-        idata = to_arviz(fit)
+        if observed_data is None and isinstance(data, Mapping) and "y" in data:
+            observed_data = {"y": np.asarray(data["y"])}
+        idata = to_arviz(
+            fit,
+            observed_data=observed_data or None,
+            log_likelihood=log_likelihood,
+            posterior_predictive=posterior_predictive,
+            coords=coords,
+            dims=dims,
+        )
 
         # Parameter summary
         param_summary = az.summary(idata)
@@ -303,6 +328,7 @@ def fit_and_summarize(
         ]
         available_cols = [c for c in summary_cols if c in param_summary.columns]
         param_summary = param_summary[available_cols]
+        assert isinstance(param_summary, pd.DataFrame)
 
         # Convergence
         convergence = check_convergence(idata)

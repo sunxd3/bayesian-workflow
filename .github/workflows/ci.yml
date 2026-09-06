@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Pinned so the integration job is reproducible and its cache key is stable.
+  CMDSTAN_VERSION: "2.39.0"
+
 jobs:
   validate:
     name: Validate plugin manifests
@@ -21,13 +25,103 @@ jobs:
       - name: claude plugin validate --strict
         run: claude plugin validate . --strict
 
-  shared-utils-tests:
-    name: shared_utils test suite
+  workflow-scripts:
+    name: Workflow scripts parse
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-      - name: Run pytest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: node --check (body wrapped like the Workflow runtime)
+        # Workflow scripts use top-level `return` and `await`, which plain ESM
+        # rejects — wrap the body the way the runtime does before checking.
+        run: |
+          set -e
+          for f in workflows/*.js; do
+            { echo "(async () => {"; sed 's/^export const meta/const meta/' "$f"; echo "})()"; } > /tmp/check.mjs
+            node --check /tmp/check.mjs && echo "ok  $f"
+          done
+
+  lint-and-types:
+    name: shared_utils lint + types
+    runs-on: ubuntu-latest
+    defaults:
+      run:
         working-directory: shared_utils
-        run: uv run --extra dev pytest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: shared_utils/uv.lock
+      - run: uv sync --extra dev
+      - name: ruff
+        run: uv run ruff check --output-format=github .
+      - name: pyright
+        run: uv run pyright
+
+  unit-tests:
+    name: shared_utils unit tests (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.13"]
+    defaults:
+      run:
+        working-directory: shared_utils
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: shared_utils/uv.lock
+      - run: uv sync --extra dev
+      - name: pytest (mocked / synthetic-data tier)
+        run: uv run pytest -m "not integration" -q
+
+  integration-tests:
+    name: shared_utils integration (real CmdStan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: shared_utils
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: shared_utils/uv.lock
+      - run: uv sync --extra dev
+
+      - name: Cache CmdStan toolchain
+        id: cmdstan-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cmdstan
+          key: cmdstan-${{ env.CMDSTAN_VERSION }}-${{ runner.os }}
+      - name: Install CmdStan
+        if: steps.cmdstan-cache.outputs.cache-hit != 'true'
+        run: uv run python -m cmdstanpy.install_cmdstan --version "$CMDSTAN_VERSION" --cores 4
+
+      - name: Cache compiled test models
+        id: models-cache
+        uses: actions/cache@v4
+        with:
+          path: shared_utils/tests/stan
+          key: stan-models-${{ env.CMDSTAN_VERSION }}-${{ runner.os }}-${{ hashFiles('shared_utils/tests/stan/*.stan') }}
+      - name: Mark cached binaries fresh
+        if: steps.models-cache.outputs.cache-hit == 'true'
+        # Checkout stamps the .stan sources with "now"; CmdStanPy recompiles
+        # whenever a source is newer than its binary. Touch the binaries so
+        # the cache is actually used.
+        run: find tests/stan -type f ! -name '*.stan' -exec touch {} +
+
+      - name: pytest (real compile + NUTS tier)
+        env:
+          # A missing toolchain must fail the job, never skip it.
+          SHARED_UTILS_REQUIRE_CMDSTAN: "1"
+        run: uv run pytest -m integration -v --durations=10
