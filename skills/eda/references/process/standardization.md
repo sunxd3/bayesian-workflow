@@ -1,6 +1,6 @@
 # Standardization
 
-Apply these transformations to produce a canonical cleaned dataset that downstream agents can trust. Standardization is mechanical cleanup driven by the semantic audit; it does not reinterpret what columns mean. Emit in a dtype-preserving format (e.g., Parquet, not CSV) and document the final schema (column names + dtypes) on output. For the canonical filename and where the schema is documented, see the eda-analyst agent's Side effects.
+Apply these transformations to produce a canonical cleaned dataset that downstream agents can trust. Standardization is mechanical cleanup driven by the semantic audit; it does not reinterpret what columns mean. Emit in a dtype-preserving format (e.g., Parquet, not CSV) and document the final schema (column names + dtypes) on output. The canonical file is `eda/data.cleaned.parquet`, written by the analyst that owns the canonical deliverables; its schema is documented in that analyst's `findings.md` and carried into `eda_report.html` (see the eda-analyst agent's Artifacts).
 
 ## Column names
 

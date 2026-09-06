@@ -122,6 +122,7 @@ const PROVENANCE = { type: 'string', description: 'Absolute path of the dataset 
 const PRIOR_RESULT = gate({
   extreme_draw_pct: { type: 'number', description: `% of prior predictive draws outside the ASSIGNED plausibility bounds. ${AUDITED.description}` },
   data_path: PROVENANCE,
+  adjustments: { type: 'string', description: 'Prior adjustments made in place (hyperparameters tightened or rescaled in model.stan + prior_model.stan) before the verdict; omit if none' },
 })
 
 const RECOVERY_RESULT = gate({
@@ -347,7 +348,7 @@ function auditGate(stageKey, r, expId) {
     }
     return flagInconsistent(r, expId, stageKey, `data_path mismatch: read ${r.data_path}`)
   }
-  if (stageKey === 'fit' && !r.data_path) {
+  if ((stageKey === 'fit' || stageKey === 'prior') && !r.data_path) {
     r = flagInconsistent(r, expId, stageKey, 'data_path missing — provenance unverifiable')
   }
   if (stageKey === 'fit' && !r.metric) {
@@ -404,9 +405,9 @@ const STAGES = [
 data_path: ${A.dataPath}
 output_dir: ${dir}/prior_predictive
 ${A.bounds ? `plausibility_bounds (from the experiment plan — compute extreme_draw_pct against THESE, not bounds of your own choosing): ${A.bounds}` : ''}
-Model spec for this experiment (author ${dir}/model.stan from it if absent):
+spec (author ${dir}/model.stan from it if absent):
 ${exp.spec}
-${exp.context ? `\nContext from the orchestration loop:\n${exp.context}` : ''}${RETURN_NOTE}`,
+${exp.context ? `\ncontext (from the orchestration loop):\n${exp.context}` : ''}${RETURN_NOTE}`,
   },
   {
     key: 'recovery', agent: 'fake-data-checker', mcmc: true, schema: RECOVERY_RESULT,
@@ -501,6 +502,11 @@ Key numbers: ${r.key_numbers}`, {
         continue lifecycle // FIX variant re-enters at the prior stage
       }
       log(`${exp.id}: ${stage.key} PASS${r.from_cache ? ' (completed-work check)' : ''}${r.cross_check ? ' ⚠' : ''}`)
+      if (stage.key === 'prior' && r.adjustments) {
+        // In-place prior tuning changed model.stan; carry it so the ledger,
+        // strategist digest, and refiners see the priors that actually ran.
+        exp = { ...exp, context: `${exp.context ? exp.context + '\n' : ''}Prior tuning during ${stage.key} of ${exp.id}: ${r.adjustments}` }
+      }
     }
 
     const critique = await call('critic', `experiment_dir: ${expDir(exp.id)}

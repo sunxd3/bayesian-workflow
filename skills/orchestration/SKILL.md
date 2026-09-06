@@ -56,6 +56,12 @@ Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/explore.js",
 Returns `{profile, analyst_findings, synthesis}`. Log the structural
 hypotheses to `log.md`.
 
+Downstream phases model the standardized dataset: from here on, `dataPath`
+for Phases 2–4 is `<project>/eda/data.cleaned.parquet` when explore.js
+produced it. If it is missing, pass the raw file and say so in the log.
+Whatever you pass is what every `status.json` records as `data_path` and what
+the develop script audits provenance against — never mix the two in one run.
+
 **Gate 1 — Goal.** If the user supplied no goal, the synthesis includes
 `suggested_goal`. Confirm it with the user (AskUserQuestion) when they are
 present; otherwise adopt it and state it explicitly before continuing.
@@ -90,7 +96,7 @@ Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/develop.js",
                    bounds: <plan.plausibility_bounds>,   // the plan's prior-check bounds
                    limits?: { maxRounds, refineBudget, maxMcmcConcurrency,
                               explorePerQuestion, maxNewQuestions,
-                              maxTotalExperiments } } })
+                              maxTotalExperiments, budgetReserve } } })
 ```
 
 `metric` and `bounds` come from the Phase 2 return — pass them through
@@ -120,11 +126,12 @@ Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/report.js",
                    dataPath } })
 ```
 
-Returns `{report_path, word_count, reviews, ...}`. The pipeline writes its
-working products under `report/` (outline, fact sheet, figures, section
-drafts, critic reviews) — they are the audit trail for the prose. If the final
-review verdict was not SHIP, read the last `report/review_round_N.md` and tell
-the user what remained open.
+Returns `{report_path, word_count, reviews, open_issues, ...}`. The pipeline
+writes its working products under `report/` (outline, fact sheet, figures,
+section drafts, critic reviews) — they are the audit trail for the prose. If
+`open_issues` is non-empty (the last review was REVISE, budget spent), relay
+them to the user instead of presenting the report as clean; the last
+`report/review_round_N.md` has the full review.
 
 Then summarize for the user: per-question findings, the selected model, caveats,
 and where every artifact lives.
@@ -140,9 +147,9 @@ lines per observation; the log is a working record, not a narrative.
 
 **Failures and dead ends** — enough detail to learn from: the symptom, what
 was tried, the outcome. Summarize tracebacks; never paste raw error dumps.
-- *Bad.* "Exp 3 recovery check failed, moved to Exp 4."
-- *Good.* "Exp 3 recovery: KeyError on '5%' column (CmdStanPy quantile
-  labels). Fixed, but beta_temp bias 0.4σ. Skipped; Exp 4 recovered clean."
+- *Bad.* "q1_e3 recovery check failed, moved on."
+- *Good.* "q1_e3 recovery: KeyError on '5%' column (CmdStanPy quantile
+  labels). Fixed, but beta_temp bias 0.4σ. Skipped; q2_e1 recovered clean."
 
 **Quantitative observations** — not just PASS/FAIL. After fits: wall time,
 divergences, treedepth, ESS minimums. After PPCs: coverage, LOO-PIT summary,
@@ -153,9 +160,9 @@ residual patterns.
 
 **Question status** — what the round taught about each open question, with
 numbers, and the evidence that settled a question when it resolves.
-- "Q1 (day RE): exp_2 vs exp_1 baseline ELPD +42±8 — day variation real.
+- "Q1 (day RE): q1_e2 vs q1_e1 baseline ELPD +42±8 — day variation real.
   Resolved."
-- "Q2 (weather): exp_3 ELPD +3±5, not distinguishable. Critic found residual
+- "Q2 (weather): q2_e1 ELPD +3±5, not distinguishable. Critic found residual
   seasonal pattern — strategist raised: annual cycle rather than weather?"
 
 **Surprises** — often more valuable than conclusions: "sigma_group piling up
@@ -165,7 +172,7 @@ near zero — day RE may not be needed."
 skipped, or an approach revised; what the user decided at each gate.
 
 **Cross-references** — file paths so the trail is followable:
-"See `experiments/exp_2/critique/critique_report.html`."
+"See `experiments/q1_e2/critique/critique_report.html`."
 
 Never rewrite or delete past entries; dead ends are part of the record.
 
@@ -180,7 +187,7 @@ data/                                # source data
 log.md                               # your lab notebook (append-only)
 eda/                                 # Phase 1 — explore.js
   eda_report.html                    # synthesist output (required)
-  data.cleaned.parquet               # standardized dataset (analyst_1 writes it)
+  data.cleaned.parquet               # standardized dataset; data_path for Phases 2–4
   data.augmented.parquet             # optional derived columns
   quality_summary.csv, univariate_summary.csv
   analyst_N/                         # one per focus area
@@ -189,7 +196,7 @@ design/                              # Phase 2 — design.js
   experiment_plan.md                 # planner seed + synthesized final table
   ledger.json                        # questions + experiments (you persist)
   log.md                             # planner notebook
-  designer_qN/proposal.md, log.md
+  designer_<question_id>/proposal.md, log.md   # q1…; gapN for coverage-gap questions
 experiments/                         # Phase 3 — develop.js
   <exp_id>/                          # one folder per experiment/variant
     model.stan                       # single source of truth for every stage
@@ -216,6 +223,7 @@ report/                              # Phase 4 — report.js
   outline.md                         # report-planner: story, briefs, omissions
   fact_sheet.md                      # report-quant: every reportable number + source
   figures/ (+ manifest.json)         # the report's figure set with captions
+  *.py                               # report-quant contrast / regeneration scripts
   sections/<id>.md                   # section-writer drafts
   review_round_N.md                  # report-critic reviews (kept even on SHIP)
   final_report.html                  # the deliverable
@@ -240,9 +248,13 @@ summarizing content inline.
 
 - **Phase 1:** one `eda-analyst` per focus area (2–3; `analyst_1` owns the
   canonical deliverables), then `synthesist` in mode `eda`.
-- **Phase 2:** `analysis-planner`, then one `model-designer` per question,
-  then `synthesist` in mode `design`; build the ledger by hand from the final
-  table.
+- **Phase 2:** `analysis-planner`, then one `model-designer` per question.
+  Assign canonical ids yourself (`q1_e1`, `q1_e2`, …; the first experiment
+  per question is its `baseline`), pass that table inline to `synthesist` in
+  mode `design`, apply its `drop` list and cross-cutting additions, and write
+  `design/ledger.json` as `{questions: [{id, statement, contrast}],
+  experiments: [{id, questionId, spec, baseline, context}],
+  deferred_questions}` — the shape develop.js validates.
 - **Phase 3:** per experiment, prior-predictive-checker → fake-data-checker →
   model-fitter → posterior-predictive-checker → critic sequentially (3–5
   experiments in parallel), honoring `status.json` short-circuits; on FAIL,

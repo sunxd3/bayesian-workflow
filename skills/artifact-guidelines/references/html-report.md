@@ -61,7 +61,7 @@ Use color sparingly. Body text is `--ink`; links and key statistical results are
   <section> Headline summary — top-of-page narrative; what's the key finding?
   <section> [domain-specific sections]
             — each agent decides its section list and declares it in
-              its Interface > Side effects
+              its Interface > Artifacts
             — every section gets an <h2> with a hairline rule above it
             — figures embedded inline within their relevant section
   <section> Risks and Pitfalls

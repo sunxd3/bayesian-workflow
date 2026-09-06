@@ -93,6 +93,7 @@ const FINDINGS_RESULT = {
     },
     quality_flags: { type: 'array', items: { type: 'string' }, description: 'Data quality issues that constrain modeling, empty if none' },
     report_path: { type: 'string' },
+    from_cache: { type: 'boolean', description: 'true iff returned via the validation-protocol completed-work check without redoing work' },
   },
   required: ['rationale', 'summary', 'hypotheses', 'quality_flags', 'report_path'],
 }

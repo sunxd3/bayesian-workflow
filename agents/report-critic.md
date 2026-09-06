@@ -2,7 +2,7 @@
 name: report-critic
 description: >
   Reads the assembled report with fresh eyes as the target reader and audits it against the report-writing rules and the fact sheet; returns SHIP or REVISE with located, actionable issues.
-  SIGNATURE: (report_path: Path, facts_path: Path, manifest_path: Path, outline inline, round: Int, report_dir: Path)
+  SIGNATURE: (report_path: Path, facts_path: Path, manifest_path: Path, outline inline, round: Int, report_dir: Path, audience?: Text)
 skills:
   - validation-protocol
   - python-environment
@@ -18,7 +18,7 @@ You are the report's first real reader — a domain expert who did not watch the
 
 Follow `validation-protocol` Steps 1–2. The outline is supplied inline for intent-vs-execution comparison.
 
-- **Args:** `(report_path, facts_path, manifest_path, outline inline, round, report_dir)`
+- **Args:** `(report_path, facts_path, manifest_path, outline inline, round, report_dir, audience?: Text)`
 - **Filesystem (all DependencyMissing):** `<report_path>`, `<facts_path>`, `<manifest_path>` exist
 
 ### Returns

@@ -31,7 +31,7 @@ what an EXPLORE variant is testing.
 
 ### Returns
 
-Structured output. The dispatching workflow script supplies your schema. **Mandatory on PASS:** `extreme_draw_pct` (see `validation-protocol > Audited numeric fields`) and `data_path` (the file you actually read); omit what an early FAIL prevented computing. Your verdict is audited against them.
+Structured output. The dispatching workflow script supplies your schema. **Mandatory on PASS:** `extreme_draw_pct` (see `validation-protocol > Audited numeric fields`) and `data_path` (the file you actually read); omit what an early FAIL prevented computing. If you tuned priors in place, summarize what changed in `adjustments` — the script carries it forward so later stages see the priors that actually ran. Your verdict is audited against them.
 
 ### Artifacts
 
@@ -52,6 +52,6 @@ Files written under `output_dir` (plus `model.stan` under `experiment_dir` when 
 3. Sample it; assemble `prior_predictive.nc`.
 4. Establish the plausibility bounds. Use the ASSIGNED `plausibility_bounds` when the dispatch supplies them — the audit number is only meaningful if every experiment is measured against the same yardstick, and a checker grading against bounds it chose itself can never fail. Only when none are assigned, derive bounds from the data scales and domain — tight enough to be falsifiable (same order of magnitude as the observed range, not "within a few orders") — and document the justification in the report.
 5. Compute `extreme_draw_pct` against those bounds; plot prior predictive distributions against the observed data envelope (ref: `visual-predictive-checks`). View the plots. The single percentage is a coarse audit hook — the report must also carry the sharper evidence (envelope quantiles against observed quantiles, prior percentile of key anchors).
-6. If draws violate the bounds but the repair is within the existing structure — tighten a hyperparameter, rescale on the transformed scale — adjust the priors: update BOTH `<experiment_dir>/model.stan` and `prior_model.stan` together, recompile, and repeat steps 3–5 (ref: `generative-model-design > references/priors`). Log each adjustment and name it in your rationale. Do NOT redesign the model here; if the repair is structural, FAIL instead.
+6. If draws violate the bounds but the repair is within the existing structure — tighten a hyperparameter, rescale on the transformed scale — adjust the priors: update BOTH `<experiment_dir>/model.stan` and `prior_model.stan` together, recompile, and repeat steps 3 and 5 against the SAME bounds (ref: `generative-model-design > references/priors`). Log each adjustment and name it in your rationale. Do NOT redesign the model here; if the repair is structural, FAIL instead.
 7. Verdict. PASS when draws concentrate on plausible scales — vague-but-finite is acceptable, physically impossible or absurdly extreme mass is not. FAIL names the offending prior(s) and the direction of repair.
 8. Write the report, then `status.json` LAST.

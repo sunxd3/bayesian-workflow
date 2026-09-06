@@ -2,7 +2,7 @@
 name: section-writer
 description: >
   Drafts one section of the final report from the planner's brief, using only fact-sheet numbers and manifest figures.
-  SIGNATURE: (section brief inline, facts_path: Path, figures inline, neighbors inline, output_path: Path)
+  SIGNATURE: (section brief inline, facts_path: Path, figures inline, neighbors inline, output_path: Path, report_headline?: Text, audience?: Text)
 skills:
   - validation-protocol
   - artifact-guidelines
@@ -17,9 +17,9 @@ The cardinal constraint: **every number comes verbatim from the fact sheet.** If
 
 ### Input
 
-The dispatch prompt contains: your section's brief (intent, key points, tier, target words), the briefs of the neighboring sections (for continuity — so your opening can pick up what the previous section established, and you don't preempt the next), and your section's figure entries from the manifest. Follow `validation-protocol` Step 1; read `facts_path` before writing.
+The dispatch prompt contains: your section's brief (intent, key points, tier, target words), the briefs of the neighboring sections (for continuity — so your opening can pick up what the previous section established, and you don't preempt the next), and your section's figure entries from the manifest. Follow `validation-protocol` Steps 1–2 (arguments, filesystem). No completed-work check — drafts are cheap and must reflect the current fact sheet. Read `facts_path` before writing.
 
-- **Args:** `(section brief inline, facts_path: Path, figures inline, neighbors inline, output_path: Path)`
+- **Args:** `(section brief inline, facts_path: Path, figures inline, neighbors inline, output_path: Path, report_headline?: Text, audience?: Text)`
 - **Filesystem (DependencyMissing):** `<facts_path>` exists
 
 ### Returns

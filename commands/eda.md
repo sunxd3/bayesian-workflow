@@ -33,13 +33,13 @@ Workflow({
 })
 ```
 
-If the Workflow tool is unavailable, dispatch a single `bayesian-workflow:eda-analyst` Agent with `data_path`, `output_dir: <output_dir>/analyst_1`, the focus area (default: "data quality, distributions, and variable relationships"), and ownership of the canonical deliverables (`<output_dir>/data.cleaned.parquet`, `quality_summary.csv`, `univariate_summary.csv`); then dispatch `bayesian-workflow:synthesist` in mode `eda` over its `findings.md` with `output_path: <output_dir>/eda_report.html`.
+If the Workflow tool is unavailable, dispatch a single `bayesian-workflow:eda-analyst` Agent with `data_path`, `output_dir: <output_dir>/analyst_1`, the focus area (default: "data quality, distributions, and variable relationships"), and ownership of the canonical deliverables (`<output_dir>/data.cleaned.parquet`, `quality_summary.csv`, `univariate_summary.csv`); then dispatch `bayesian-workflow:synthesist` in mode `eda` with `inputs: [<output_dir>/analyst_1/findings.md]`, `output_path: <output_dir>/eda_report.html`, `data_path`, and `goal` (or `goal: NOT SUPPLIED — propose one in suggested_goal`).
 
 ## Present results
 
 When the run completes, present the synthesis: structural hypotheses, modeling implications, and data quality flags. Point the user at:
 - `<output_dir>/eda_report.html` — full narrative report (open in a browser)
-- `<output_dir>/data.cleaned.parquet` — canonical standardized dataset
+- `<output_dir>/data.cleaned.parquet` — canonical standardized dataset (what `/bayesian-workflow:run` models in later phases)
 - `<output_dir>/analyst_N/findings.md` and `log.md` — per-analyst findings and running trace
 
 ## User input

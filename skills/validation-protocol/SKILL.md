@@ -107,7 +107,7 @@ writing it last is what makes its existence a completion marker.
   "verdict": "PASS | FAIL | VIABLE | CONCERNS | BROKEN",
   "key_numbers": "<one dense line: the numbers behind the verdict>",
   "data_path": "<absolute path of the dataset file this stage read — omit only if none>",
-  "artifacts": ["<files under output_dir that must exist for this record to be trusted>"]
+  "artifacts": ["<files that must exist for this record to be trusted: relative to output_dir, or absolute for deliverables written elsewhere>"]
 }
 ```
 

@@ -2,7 +2,7 @@
 name: report-quant
 description: >
   Evidence compiler for the report: computes the practical contrasts, builds the fact sheet every number in the report must trace to, and prepares the figure set (copy, or regenerate at report quality) with takeaway captions.
-  SIGNATURE: (project_dir: Path, report_dir: Path, outline inline, selected_model_dir?: Path, data_path?: Path)
+  SIGNATURE: (project_dir: Path, report_dir: Path, outline inline, selected_model_dir?: Path, data_path?: Path, figure_budget?: int)
 skills:
   - validation-protocol
   - python-environment
@@ -19,12 +19,12 @@ You are the report's evidence compiler. Writers may only use numbers you put on 
 
 The dispatch prompt contains the planner's outline (section briefs with the numbers they need, figure story, contrast specs). Follow `validation-protocol` Steps 1–2 for paths.
 
-- **Args:** `(project_dir, report_dir, outline inline, selected_model_dir?, data_path?)`
-- **Filesystem (DependencyMissing):** `<project_dir>` exists; when contrast specs are present, `<selected_model_dir>/fit/posterior.nc` exists
+- **Args:** `(project_dir, report_dir, outline inline, selected_model_dir?, data_path?, figure_budget?: int)`
+- **Filesystem (DependencyMissing):** `<project_dir>` exists; when `selected_model_dir` is supplied, `<selected_model_dir>/fit/posterior.nc` exists. When it is not supplied, contrasts that need a posterior are not computed — list them in `missing`.
 
 ### Returns
 
-Structured output. The dispatching workflow script supplies your schema — the figure manifest entries (id, path, caption, section, takeaway) and `facts_path` are consumed verbatim downstream. Anything the outline needs that you could NOT source goes in `missing` — never silently drop it.
+Structured output. The dispatching workflow script supplies your schema — the figure manifest entries (id, path, caption, note_for_writer) and `facts_path` are consumed verbatim downstream. Anything the outline needs that you could NOT source goes in `missing` — never silently drop it.
 
 ### Artifacts
 

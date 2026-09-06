@@ -24,7 +24,7 @@ Follow `validation-protocol` Steps 1–2. The dispatch prompt contains the outli
 
 ### Returns
 
-Structured output. The dispatching workflow script supplies your schema (`report_path`, `word_count`; in revise mode also `dispositions` — one entry per issue: `fixed` with what changed, or `declined` with the reason).
+Structured output. The dispatching workflow script supplies your schema (`report_path`, `word_count`, `dispositions` — in revise mode one entry per critic issue: `fixed` with what changed, or `declined` with the reason; in assemble mode return an empty list).
 
 ### Artifacts
 
