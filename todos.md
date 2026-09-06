@@ -1,6 +1,6 @@
 * more backend
 * research agent
-* knwoledge management
+* knowledge management
 * world model
 * inference alg
 * simulation

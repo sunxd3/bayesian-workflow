@@ -1,20 +1,64 @@
 # Bayesian Workflow
 
 A Claude Code plugin for end-to-end Bayesian statistical modeling with Stan
-and ArviZ, built around one architectural rule: **deterministic control flow
-is code; judgment is an agent; the orchestrator only holds the seams.**
+and ArviZ. It packages four Workflow scripts, eighteen subagents, and a library
+of methodology skills that together run the full workflow —
+**EDA → model design → model development → reporting** — around one
+architectural rule: **deterministic control flow is code; judgment is an
+agent; the orchestrator only holds the seams.**
 
-It began as a from-scratch rebuild ("v2") of the archived
-[bayesian-statistician-plugin](https://github.com/sunxd3/bayesian-statistician-plugin);
-the v1/v2 comparisons below refer to that predecessor.
+## Prerequisites
 
-v1 split Phase 3 as "mechanics in a workflow script, judgment in the
-orchestrator's main loop between rounds". v2 inverts the remainder: the *entire*
-multi-round development loop — including the between-round judgment — runs
-inside one Workflow script, with judgment delegated to schema-constrained
-agents (`strategist`, `critic`) *inside* the loop. The main-loop orchestrator
-shrinks to a thin phase driver whose only real jobs are the user gates,
-persistence, and the lab notebook.
+- [`uv`](https://docs.astral.sh/uv/) — used for all Python execution.
+- A C++ toolchain — CmdStanPy compiles Stan models against CmdStan. The
+  `/bayesian-workflow:setup` command installs CmdStan via
+  `python -m cmdstanpy.install_cmdstan`.
+- The Workflow tool. On harnesses without it, the orchestration skill degrades
+  to Agent-tool dispatch at the same file contracts (slower; the scripts are
+  preferred).
+
+## Install
+
+**From the marketplace** (the repository is also its own marketplace):
+
+```
+/plugin marketplace add sunxd3/bayesian-statistician-plugin
+/plugin install bayesian-workflow@sunxd3-plugins
+```
+
+**For local development**, clone the repository and load it with `--plugin-dir`:
+
+```bash
+git clone https://github.com/sunxd3/bayesian-statistician-plugin.git
+claude --plugin-dir ./bayesian-statistician-plugin
+```
+
+Run `/reload-plugins` after editing a locally loaded plugin.
+
+## Usage
+
+Bootstrap the Python environment once per project:
+
+```
+> /bayesian-workflow:setup
+```
+
+Then run the workflow with your data path and/or analysis goal:
+
+```
+> /bayesian-workflow:run data/sales.csv — model weekly sales and quantify the promotion effect
+```
+
+The orchestrator drives four phases, pausing at two user gates (goal
+confirmation after EDA, plan approval after design), and writes everything
+into a predictable folder structure (`eda/`, `design/`, `experiments/`,
+`report/`, `log.md`).
+
+Phase 1 can also run standalone:
+
+```
+> /bayesian-workflow:eda data/sales.csv [output_dir] [--focus=<area>]
+```
 
 ## The three layers
 
@@ -24,7 +68,7 @@ persistence, and the lab notebook.
 | **Agents** (`agents/*.md`) | Judgment over files, behind a typed interface | is this prior plausible, what does this residual mean, which question is resolved, is this the right model class |
 | **Skills** (`skills/*`) | Methodology, loaded on demand by agents | Stan idiom, convergence thresholds, SBC, LOO validity, report formats |
 
-The orchestrator (loaded by `/bayesian-workflow:run`) invokes three scripts
+The orchestrator (loaded by `/bayesian-workflow:run`) invokes the four scripts
 in order and gates between them:
 
 ```
@@ -45,12 +89,12 @@ report.js    Planner → quant (fact sheet + figures) → N parallel
 **The question ledger is first-class data.** The unit of scientific progress is
 the structural question, so `develop.js` maintains a machine-readable ledger —
 question → status → variants → score trajectory → resolution — threaded through
-every round and persisted as `ledger.json`. The "iterate until modifications
-stop helping" rule of v1 prose becomes a checkable plateau guard
-(latest score gain < 2·SE(diff) → no further EXPLORE); the report writer gets
-its narrative spine for free. The ledger also records `data_path` and the
-ranking metric, so results from different datasets or metrics can never be
-silently compared.
+every round and persisted as `ledger.json`. The earlier orchestrator's prose
+rule "iterate until modifications stop helping" becomes a checkable plateau
+guard (latest score gain < 2·SE(diff) → no further EXPLORE); the report
+pipeline gets its narrative spine for free. The ledger also records `data_path`
+and the ranking metric, so results from different datasets or metrics can never
+be silently compared.
 
 **Hardcode the shape, not the semantics.** A deterministic loop needs to
 *compare* experiments, so the script fixes only the shape a comparison
@@ -80,12 +124,12 @@ dispatched — is demoted to FAIL and enters the FIX loop; the other stages'
 thresholds are heuristics, so inconsistencies are flagged for the strategist.
 Definitions live in the `validation-protocol` skill's table.
 
-**Framework questioning moved from per-experiment to per-round.** v1's critique
-did statistical + domain + framework in one pass per experiment — expensive at
-the most frequent stage, and anchored by the context that just validated the
-model. v2's `critic` does statistical + domain and records `surprises`; the
-`strategist` does framework questioning once per round over the whole
-population, where it belongs.
+**Framework questioning is per-round, not per-experiment.** The earlier
+`critique` agent did statistical + domain + framework in one pass per
+experiment — expensive at the most frequent stage, and anchored by the context
+that just validated the model. The `critic` does statistical + domain and
+records `surprises`; the `strategist` does framework questioning once per
+round over the whole population, where it belongs.
 
 **Facts→policy profiling.** `explore.js` sizes the EDA fan-out by having a
 cheap profiler agent return dataset *facts*, then applying a deterministic
@@ -112,73 +156,94 @@ draft in parallel from briefs, allowed to use only fact-sheet numbers; an
 test, numbers-vs-fact-sheet, dangling promises, paragraph density), looping
 back to the assembler until SHIP or the revision budget is spent. The shared
 quality bar lives in the `report-writing` skill, linked by all five report
-agents; the critic audits against its rules by name. The
-script supports `stopAfter` / `outline` / `facts` args, so any stage can be run
-and inspected in isolation — including standalone on a finished analysis
-project.
+agents; the critic audits against its rules by name.
 
 **What agents do NOT contain:** sequencing, budgets, retry policy, output
 schemas, or each other's names. An agent is a role, a typed interface
 (args / filesystem preconditions / artifacts / structured return), and a
 skill-referencing procedure. That is the whole convention.
 
-## Agents (18)
+## What's inside
 
-`data-profiler`, `eda-analyst`, `synthesist` (eda|design modes),
-`analysis-planner`, `model-designer`, `prior-predictive-checker`,
-`fake-data-checker`, `model-fitter`, `posterior-predictive-checker`, `critic`,
-`strategist`, `model-refiner` (FIX|EXPLORE), `model-selector`,
-`report-planner`, `report-quant`, `section-writer`, `report-assembler`,
-`report-critic`.
+**Workflow scripts (4)** — `explore.js`, `design.js`, `develop.js`, and
+`report.js` under `workflows/`. Every script accepts `model` (per-agent model
+override, e.g. `"sonnet"`) and `agentBodies` (map of agent name → role
+instructions, prepended to the dispatch prompt and run on the default
+subagent — lets you test pipelines and iterate on agent prompts in a session
+where the plugin is not loaded). `report.js` additionally supports
+`stopAfter` / `outline` / `facts` for stage-isolated runs, including standalone
+on a finished analysis project.
 
-## Testing seams (validated on a real project)
+**Agents (18)**, by phase:
+- *Explore* — `data-profiler`, `eda-analyst`, `synthesist` (`eda` mode)
+- *Design* — `analysis-planner`, `model-designer`, `synthesist` (`design` mode)
+- *Develop* — `prior-predictive-checker`, `fake-data-checker`, `model-fitter`,
+  `posterior-predictive-checker`, `critic`, `strategist`, `model-refiner`
+  (FIX | EXPLORE), `model-selector`
+- *Report* — `report-planner`, `report-quant`, `section-writer`,
+  `report-assembler`, `report-critic`
 
-Every workflow script accepts two test knobs: `model` (per-agent model override,
-e.g. `"sonnet"`) and `agentBodies` (map of agent name → role instructions,
-prepended to the dispatch prompt and run on the default subagent — lets you
-test pipelines and iterate on agent prompts in a session where the plugin is
-not loaded). `report.js` additionally supports `stopAfter` / `outline` /
-`facts` for stage-isolated runs. The dispatch seam (`call()`) also converts
+**Commands (3)**:
+- `/bayesian-workflow:setup` — bootstraps the Python environment (copies
+  `shared_utils`, creates `pyproject.toml`, runs `uv sync` and
+  `cmdstanpy.install_cmdstan`).
+- `/bayesian-workflow:run [data-path and/or analysis goal]` — end-to-end
+  pipeline. Loads the `orchestration` skill and drives all four phases.
+- `/bayesian-workflow:eda <data_path> [output_dir] [--focus=<area>]` — Phase 1
+  standalone via `explore.js`.
+
+**Skills (16)** — three workflow skills: `orchestration` (the phase driver,
+loaded by `run`), `validation-protocol` (input validation, `status.json`
+completion records, structured returns and the audited-numbers table), and
+`report-writing` (the report quality bar, with `references/final-report.md` for
+the Phase 4 section skeleton and practical contrasts). Thirteen methodology
+skills: `python-environment`, `stan` (with `references/ode.md` and
+`references/horseshoe.md`), `generative-model-design` (lean index +
+`references/` for spec sections, design principles, and the resolution-sequence
+pattern), `analysis-design`, `fake-data-simulation` (`references/single-draw.md`,
+`references/sbc.md`, `references/decision.md`), `convergence-diagnostics`,
+`inferencedata-handling`, `visual-predictive-checks`,
+`bayesian-model-diagnostics`, `bayesian-model-selection`, `model-critique`
+(index + `references/` for statistical, domain, and framework assessment),
+`eda` (`references/process/` for EDA procedures, `references/tests/` for a
+diagnostic test library by data shape), and `artifact-guidelines`
+(`references/html-report.md`, `references/markdown-report.md`, figure
+conventions). Agents load the skills relevant to their role; skills are not
+user-invocable directly — use the commands above.
+
+**Bundled library** — `shared_utils`, a Python package with a fit-and-summarize
+pipeline, convergence diagnostics, LOO, and ArviZ helpers. The setup command
+copies it into the working project as a path dependency.
+
+## Testing
+
+Workflows on this scale are expensive to run end-to-end, so the seams are built
+for partial runs: `agentBodies` for prompt iteration without a plugin reload,
+`model` to run the pipeline on a cheaper tier, and `report.js`'s `stopAfter`
+for stage-isolated report runs. The dispatch seam (`call()`) converts
 agent-level failures (a subagent finishing without structured output THROWS
 from `agent()`) into the uniform "lost" signal so retry/resubmit machinery
 engages instead of a lifecycle dying.
 
-The pipeline was validated end-to-end against `ck63g` (a completed v1 run):
-explore/design reproduced the original run's framing independently on sonnet;
-the report pipeline produced a measurably better report than v1's single-shot
-writer (298- vs 589-word executive summary, zero dangling promises, three
-blocking factual errors caught by the critic against the fact sheet); the
-develop smoke run exercised the stage contracts, audited numerics, and crash
-recovery on a real Stan fit.
+The pipeline was validated end-to-end against `ck63g`, a completed run of the
+earlier single-script design: explore/design reproduced that run's framing
+independently on sonnet; the report pipeline produced a measurably better
+report than the single-shot writer (298- vs 589-word executive summary, zero
+dangling promises, three blocking factual errors caught by the critic against
+the fact sheet); the develop smoke run exercised the stage contracts, audited
+numerics, and crash recovery on a real Stan fit.
 
-## Install & use
+## History
 
-```bash
-git clone https://github.com/sunxd3/bayesian-workflow.git
-claude --plugin-dir ./bayesian-workflow
-```
+The first version of this plugin drove all four phases from orchestrator
+prose, with a single Workflow script (`validate-experiments.js`) running one
+Phase 3 round at a time and the orchestrator judging between rounds. The
+script-led design was rebuilt from scratch on a separate branch, validated
+against a completed run of the first version, and consolidated back into this
+repository. The thirteen methodology skills and `shared_utils` carried over
+unchanged — the rebuild targeted the workflow architecture, not the statistical
+methodology. See `CHANGELOG.md`.
 
-```
-> /bayesian-workflow:setup                 # once per project
-> /bayesian-workflow:run data/sales.csv    # end-to-end
-> /bayesian-workflow:eda data/sales.csv    # Phase 1 standalone
-```
+## License
 
-Requires `uv` and a C++ toolchain (CmdStan). On harnesses without the Workflow
-tool, the orchestration skill degrades to Agent-tool dispatch at the same file
-contracts (slower; the scripts are preferred).
-
-## Layout
-
-```
-workflows/  explore.js  design.js  develop.js  report.js   # the deterministic skeleton
-agents/     18 role definitions                  # judgment over files
-skills/     orchestration, validation-protocol,  # rewritten for v2
-            report-writing                       # the report quality bar
-            + 13 methodology skills              # carried over from v1
-commands/   run, setup, eda
-shared_utils/                                    # bundled Python lib (carried over)
-```
-
-The 13 methodology skills and `shared_utils` are copied from v1 verbatim — the
-rebuild targets the workflow architecture, not the statistical methodology.
+MIT — see [LICENSE](LICENSE).
