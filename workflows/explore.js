@@ -22,7 +22,7 @@
 export const meta = {
   name: 'explore-data',
   description: 'Phase 1: profile the dataset, run parallel EDA analysts, synthesize one report',
-  whenToUse: 'Dispatched by the bayesian-workflow orchestrator (or /bayesian-workflow:eda). Not intended for direct use.',
+  whenToUse: 'Dispatched by the bayesian-workflow orchestrator (or /bayesian-workflow:explore). Not intended for direct use.',
   phases: [
     { title: 'Profile', detail: 'cheap facts pass to size the fan-out' },
     { title: 'Explore', detail: 'one analyst per focus area, in parallel' },
