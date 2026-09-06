@@ -2,13 +2,13 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "bayesian-workflow",
   "displayName": "Bayesian Workflow",
-  "description": "Orchestrated subagents and skills for end-to-end Bayesian statistical modeling with Stan and ArviZ",
+  "description": "Script-led Bayesian modeling workflow: deterministic control flow in Workflow scripts, judgment in schema-constrained subagents, Stan + ArviZ methodology in skills",
   "author": {
     "name": "Xianda Sun",
     "email": "sunxdt@gmail.com"
   },
-  "homepage": "https://github.com/sunxd3/bayesian-statistician-plugin",
-  "repository": "https://github.com/sunxd3/bayesian-statistician-plugin",
+  "homepage": "https://github.com/sunxd3/bayesian-workflow",
+  "repository": "https://github.com/sunxd3/bayesian-workflow",
   "license": "MIT",
   "keywords": [
     "bayesian",
@@ -17,7 +17,7 @@
     "cmdstanpy",
     "arviz",
     "mcmc",
-    "probabilistic-modeling",
-    "data-analysis"
+    "workflow",
+    "probabilistic-modeling"
   ]
 }

@@ -1,6 +1,6 @@
 {
-  "name": "sunxd3-plugins",
-  "description": "Plugins for Bayesian statistical modeling with Claude Code",
+  "name": "bayesian-workflow",
+  "description": "Script-led Bayesian modeling workflow for Claude Code",
   "owner": {
     "name": "Xianda Sun",
     "email": "sunxdt@gmail.com"
@@ -10,9 +10,9 @@
       "name": "bayesian-workflow",
       "source": {
         "source": "github",
-        "repo": "sunxd3/bayesian-statistician-plugin"
+        "repo": "sunxd3/bayesian-workflow"
       },
-      "description": "Orchestrated subagents and skills for end-to-end Bayesian statistical modeling with Stan and ArviZ"
+      "description": "Script-led Bayesian workflow: deterministic control flow in Workflow scripts, judgment in schema-constrained subagents, multi-agent report writing"
     }
   ]
 }

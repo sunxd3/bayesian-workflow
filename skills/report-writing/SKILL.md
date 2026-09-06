@@ -1,23 +1,24 @@
 ---
 name: report-writing
-description: The writing quality bar for the final report — skim test, narrative arc, number density, figure discipline, detail tiers, and mechanical hygiene. Loaded by the report-writer agent; audit your draft against these rules before delivering.
+description: The writing quality bar for the final report — skim test, narrative arc, number density, figure discipline, detail tiers, and mechanical hygiene. Shared by the whole report pipeline; the critic audits against these rules by name.
 user-invocable: false
 ---
 
 # Report Writing — the quality bar for the final report
 
-`artifact-guidelines > references/final-report` defines the section skeleton
-and the practical-contrasts procedure; `references/html-report` the visual
-format. This skill defines what makes the writing *good*. Before delivering,
-re-read your draft against these rules by name — they are what a cold reader
-notices.
+Shared standard for the report pipeline (planner, section writers, assembler,
+critic). `references/final-report.md` defines the section skeleton and the
+practical-contrasts requirement; this file defines what makes the writing
+*good*. The critic tests against these rules by name. For visual format
+(HTML skeleton, typography, figures-as-files), see
+`artifact-guidelines > references/html-report`.
 
 ## The skim test (the master rule)
 
-Title + section headings + figures with captions + the first sentence of every
-section must carry the complete argument on their own. A reader who skims
-exactly that should walk away knowing what was found, how strongly, and what
-to be careful about. Everything else is elaboration for readers who slow down.
+Title + dek + section headings + figures with captions + the first sentence of
+every section must carry the complete argument on their own. A reader who skims
+exactly that should walk away knowing what was found, how strongly, and what to
+be careful about. Everything else is elaboration for readers who slow down.
 
 Corollaries:
 - Headings state findings, not topics ("The noise is multiplicative on the
@@ -51,18 +52,15 @@ tier.
   ("+140.6 ± 31.5 over the constant-CV model", never "ELPD −12,304").
 - Consistent precision (2–3 significant figures); one convention for intervals
   throughout.
-- **Every number traces to a source artifact** (`loo.json`, `summary.json`, a
-  stage report, your contrast script's output). Quote values from files, never
-  from memory; a number you cannot source does not go in the report.
 
 ## Rhythm — don't run a template
 
 Identical section shapes read as machine output. Vary the entry: one section
 can open with the figure, another with the contrast that settles it, another
-with the anomaly that motivated it. Labels like "Hypothesis." repeated in
-every section are outline scaffolding — remove them and let prose carry the
-structure. Sentence length should vary; three long compound sentences in a
-row is a signal to cut.
+with the anomaly that motivated it. Labels like "Hypothesis." repeated in every
+section are outline scaffolding — remove them and let prose carry the
+structure. Sentence length should vary; three long compound sentences in a row
+is a signal to cut.
 
 ## Figures — each earns its place
 
@@ -87,24 +85,17 @@ row is a signal to cut.
 When a section overflows its budget, move detail down a tier rather than
 cutting it.
 
-## Hygiene (mechanical — check these literally in your self-audit)
+## Hygiene (mechanical — the critic checks these literally)
 
 - **No dangling promises.** Every "the table below", "the full specification:",
   "see Figure N" must resolve to content that actually exists, adjacent to the
   reference.
 - **Experiment ids are bookkeeping.** Call models by what they claim ("the
-  risk-sensitive model"), give the id once in parentheses at first mention,
-  and keep the id-to-model map in supplementary.
+  risk-sensitive model"), give the id once in parentheses at first mention, and
+  keep the id-to-model map in supplementary.
 - **Define before use.** Every acronym/metric defined at first occurrence;
   metric caveats stated once, in one place, and referenced elsewhere.
+- **Every number traces to the fact sheet.** Writers use fact-sheet numbers
+  verbatim; a number that isn't there is flagged, never improvised.
 - **Honesty is structure.** Caveats and informative negative results get their
   own place in the arc — not an apologetic afterthought, not scattered hedges.
-
-## Self-audit before delivering
-
-You have no external critic; be your own. After composing the draft: (1) run
-the skim test literally — read only headings, captions, and first sentences,
-and write down the story they tell; if it differs from the full report's story
-or has holes, fix the skeleton, not the prose; (2) check every hygiene rule
-above; (3) recheck three numbers at random against their source files. Only
-then write the final file.
