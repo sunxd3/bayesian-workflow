@@ -16,7 +16,7 @@
 //
 // Deterministic logic owned here: fan-out sizing (a policy applied to facts the
 // profiler returns), analyst retry-once, focus-area assignment, and which
-// analyst owns the canonical CSV deliverables. Judgment (what the data means)
+// analyst owns the canonical deliverables (cleaned dataset + summary CSVs). Judgment (what the data means)
 // lives in the analyst and synthesist agents.
 
 export const meta = {
@@ -139,10 +139,10 @@ const saneFindings = (r, outDir) =>
 
 async function runAnalyst(focus, i) {
   const outDir = `${EDA_DIR}/analyst_${i + 1}`
-  // Analyst 1 always owns the canonical CSV deliverables — a deterministic
-  // assignment so the tables exist exactly once regardless of fan-out size.
+  // Analyst 1 always owns the canonical deliverables — a deterministic
+  // assignment so they exist exactly once regardless of fan-out size.
   const canonical = i === 0
-    ? `\nYou own the canonical deliverables: also write ${EDA_DIR}/quality_summary.csv and ${EDA_DIR}/univariate_summary.csv.`
+    ? `\nYou own the canonical deliverables: also write ${EDA_DIR}/data.cleaned.parquet (the standardized dataset — document its schema in findings.md), ${EDA_DIR}/quality_summary.csv and ${EDA_DIR}/univariate_summary.csv.`
     : ''
   const prompt = `data_path: ${A.dataPath}
 output_dir: ${outDir}

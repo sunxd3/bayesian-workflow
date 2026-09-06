@@ -4,7 +4,22 @@ argument-hint: "<data_path> [output_dir] [--focus=<area>]"
 allowed-tools: Workflow, Agent, Bash, Read, Write
 ---
 
-Run Phase 1 of the Bayesian workflow standalone via the bundled script:
+Run Phase 1 of the Bayesian workflow standalone via the bundled script.
+
+## Parse arguments
+
+From `$ARGUMENTS`, extract:
+- `data_path` (required, first positional) — path to the dataset (CSV, JSON, Parquet)
+- `output_dir` (optional, second positional; default `eda/`) — directory to write outputs into
+- `focus_area` (optional, `--focus=<area>` or trailing prose) — aspect of the data to emphasize
+
+Resolve `data_path` to an absolute path; if `$ARGUMENTS` is empty, `data_path` cannot be identified, or the file does not exist, say so and stop.
+
+## Verify environment
+
+Use Bash to check that `./pyproject.toml` and `./shared_utils/` both exist in the current working directory. If either is missing, tell the user to run `/bayesian-workflow:setup` first and stop.
+
+## Run explore.js
 
 ```
 Workflow({
@@ -18,9 +33,14 @@ Workflow({
 })
 ```
 
-Resolve `data_path` to an absolute path first; if it does not exist, say so and stop. When the run completes, present the synthesis: report location, structural hypotheses, modeling implications, and data quality flags.
+If the Workflow tool is unavailable, dispatch a single `bayesian-workflow:eda-analyst` Agent with `data_path`, `output_dir: <output_dir>/analyst_1`, the focus area (default: "data quality, distributions, and variable relationships"), and ownership of the canonical deliverables (`<output_dir>/data.cleaned.parquet`, `quality_summary.csv`, `univariate_summary.csv`); then dispatch `bayesian-workflow:synthesist` in mode `eda` over its `findings.md` with `output_path: <output_dir>/eda_report.html`.
 
-If the Workflow tool is unavailable, dispatch a single `bayesian-workflow:eda-analyst` Agent directly with `data_path`, `output_dir`, and the focus area (default: "data quality, distributions, and variable relationships"), then present its findings.
+## Present results
+
+When the run completes, present the synthesis: structural hypotheses, modeling implications, and data quality flags. Point the user at:
+- `<output_dir>/eda_report.html` — full narrative report (open in a browser)
+- `<output_dir>/data.cleaned.parquet` — canonical standardized dataset
+- `<output_dir>/analyst_N/findings.md` and `log.md` — per-analyst findings and running trace
 
 ## User input
 

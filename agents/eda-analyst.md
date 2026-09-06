@@ -21,7 +21,7 @@ Follow the `validation-protocol` skill (full protocol, including the completed-w
 - **Args:** `(data_path: Path, output_dir: Path, focus_area: Text, goal?: Text, dataset_profile?: Text)`
 - **Filesystem (PreconditionFailed):** `<data_path>` exists
 
-The dispatch may additionally assign you the canonical deliverables (`quality_summary.csv`, `univariate_summary.csv`) — write them at the exact paths given.
+The dispatch may additionally assign you the canonical deliverables (`data.cleaned.parquet`, `quality_summary.csv`, `univariate_summary.csv`) — write them at the exact paths given.
 
 ### Returns
 
@@ -33,6 +33,8 @@ Files written under `output_dir`:
 
 - `log.md` — append-only notebook; append entries live as work proceeds. See `artifact-guidelines > references/markdown-report`.
 - `findings.md` — the focus-area report: what was examined, what was found, competing structural hypotheses with evidence, data quality flags, modeling implications. Markdown — the synthesist merges analyst findings into the single HTML report.
+- `data.cleaned.parquet` (canonical-deliverables owner only, at the path given) — the standardized dataset for downstream agents. Document its schema in `findings.md` so the synthesist can carry it into the report's Data Semantics Audit. Ref: `eda > references/process/standardization`.
+- `data.augmented.parquet` (optional) — derived columns beyond the cleaned schema (rolling/cumulative summaries, lag features) that the modeling handoff surfaces and downstream designers/fitters may want. Document the added columns in `findings.md`.
 - `*.png` — plots backing every claim in `findings.md`.
 - `*.py` — analysis scripts (self-contained, run with `uv run`).
 - `status.json` — completion record, written LAST. See `validation-protocol > On completion`.
@@ -40,8 +42,9 @@ Files written under `output_dir`:
 ## Procedure
 
 1. Audit data semantics before computing anything — what does a row mean, what are the units, which columns are measurements vs identifiers? (ref: `eda > references/process/data-semantics-audit`)
-2. Run the quality checks relevant to your focus area (ref: `eda > references/process/data-quality-checks`; timestamps: `references/process/timestamp-handling`).
-3. Apply the diagnostic tests matching the data shape — distribution, regression, time-series, count, missing/hierarchical (ref: `eda > references/tests/`, pick by shape).
-4. Visualize what you claim (ref: `eda > references/process/visualization`). View every plot you save; describe what you actually see, not what you expected.
-5. Formulate competing structural hypotheses: at least two plausible DGP stories your evidence cannot yet distinguish are more valuable than one confident story. Frame them so a model comparison could separate them.
-6. Write `findings.md` with a modeling-handoff section (ref: `eda > references/process/modeling-handoff`), then `status.json` last.
+2. Apply the mechanical standardization the audit implies to your working frame — snake_case names, NaN harmonization, type coercion, categorical normalization (ref: `eda > references/process/standardization`). If you own the canonical deliverables, write the result as `data.cleaned.parquet` and the summary CSVs at the assigned paths.
+3. Run the quality checks relevant to your focus area (ref: `eda > references/process/data-quality-checks`; timestamps: `references/process/timestamp-handling`).
+4. Apply the diagnostic tests matching the data shape — distribution, regression, time-series, count, missing/hierarchical (ref: `eda > references/tests/`, pick by shape).
+5. Visualize what you claim (ref: `eda > references/process/visualization`). View every plot you save; describe what you actually see, not what you expected.
+6. Formulate competing structural hypotheses: at least two plausible DGP stories your evidence cannot yet distinguish are more valuable than one confident story. Frame them so a model comparison could separate them.
+7. Write `findings.md` with a modeling-handoff section (ref: `eda > references/process/modeling-handoff`), then `status.json` last.

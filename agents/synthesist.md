@@ -30,7 +30,7 @@ Structured output. The dispatching workflow script supplies your schema — trea
 
 ### Artifacts
 
-- mode `eda` → `output_path` (`eda_report.html`): the canonical EDA report — convergent patterns, divergent insights, competing structural hypotheses (deduplicated), variance decomposition, modeling implications, data quality constraints. Follow `artifact-guidelines > references/html-report`. Reuse analyst plots by referencing their files; regenerate only what synthesis itself requires.
+- mode `eda` → `output_path` (`eda_report.html`): the canonical EDA report — convergent patterns, divergent insights, competing structural hypotheses (deduplicated), variance decomposition, modeling implications, data quality constraints, and a Data Semantics Audit section documenting the schema of `data.cleaned.parquet` as recorded by the analyst that wrote it. Follow `artifact-guidelines > references/html-report`. Reuse analyst plots by referencing their files; regenerate only what synthesis itself requires.
 - mode `design` → `output_path` (`experiment_plan.md`): append the final experiments table, PRESERVING the planner-seeded sections above it. Follow `artifact-guidelines > references/markdown-report`.
 
 ## Procedure
