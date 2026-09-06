@@ -6,6 +6,7 @@ description: >
 skills:
   - validation-protocol
   - python-environment
+  - fit-pipeline
   - artifact-guidelines
   - stan
   - generative-model-design
@@ -49,7 +50,7 @@ Files written under `output_dir` (plus `model.stan` under `experiment_dir` when 
 
 1. If `<experiment_dir>/model.stan` is absent, author it from `spec` (refs: `stan` for idiom and parameterization; `generative-model-design > references/priors` when the spec leaves a prior underdetermined). Verify it compiles before anything else.
 2. Author `prior_model.stan` — priors only, `generated quantities` producing `y_rep` on the observed design (real data enters only as covariates/shapes, never the outcome).
-3. Sample it; assemble `prior_predictive.nc`.
+3. Sample it with `fit-pipeline > references/prior_predictive.py`, passing the assigned bounds via `--bounds` so `prior_check.json` carries the audited `extreme_draw_pct`; it assembles `prior_predictive.nc`.
 4. Establish the plausibility bounds. Use the ASSIGNED `plausibility_bounds` when the dispatch supplies them — the audit number is only meaningful if every experiment is measured against the same yardstick, and a checker grading against bounds it chose itself can never fail. Only when none are assigned, derive bounds from the data scales and domain — tight enough to be falsifiable (same order of magnitude as the observed range, not "within a few orders") — and document the justification in the report.
 5. Compute `extreme_draw_pct` against those bounds; plot prior predictive distributions against the observed data envelope (ref: `visual-predictive-checks`). View the plots. The single percentage is a coarse audit hook — the report must also carry the sharper evidence (envelope quantiles against observed quantiles, prior percentile of key anchors).
 6. If draws violate the bounds but the repair is within the existing structure — tighten a hyperparameter, rescale on the transformed scale — adjust the priors: update BOTH `<experiment_dir>/model.stan` and `prior_model.stan` together, recompile, and repeat steps 3 and 5 against the SAME bounds (ref: `generative-model-design > references/priors`). Log each adjustment and name it in your rationale. Do NOT redesign the model here; if the repair is structural, FAIL instead.

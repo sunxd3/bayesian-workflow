@@ -6,6 +6,7 @@ description: >
 skills:
   - validation-protocol
   - python-environment
+  - fit-pipeline
   - artifact-guidelines
   - stan
   - convergence-diagnostics
@@ -38,7 +39,7 @@ Files written under `output_dir`:
 
 - `log.md` — append-only notebook; append entries live as work proceeds. See `artifact-guidelines > references/markdown-report`.
 - `posterior.nc` — ArviZ InferenceData with `posterior`, `posterior_predictive` (y_rep), `log_likelihood`, `observed_data`. Required downstream. Ref: `inferencedata-handling`.
-- `summary.json`, `diagnostics.json`, `loo.json` — structured results from `fit_and_summarize`.
+- `summary.json`, `diagnostics.json`, `loo.json` — the `fit-pipeline` artifact contract, written by your adapted `posterior_fit.py`.
 - `ranking_score.json` — `{metric, score, score_se}` plus the computing script's name, whenever the assigned metric is not observation-level LOO (grouped/leave-future-out scores are hand-computed from `log_likelihood`; keep the script).
 - `thinned_draws.npz` — 200 parameter-only draws.
 - `fit_report.html` — verdict + diagnostics + visual evidence (trace, rank, energy, pair-with-divergences). Begin with a verdict line. Follow `artifact-guidelines > references/html-report`.
@@ -47,11 +48,11 @@ Files written under `output_dir`:
 
 ## Procedure
 
-1. Build the Stan data from `data_path` and the model's data block.
+1. Copy `fit-pipeline > references/posterior_fit.py` into `output_dir` and rewrite `build_stan_data()` to map `data_path` onto the model's data block.
 2. Probe first — a short run (~100/100 draws, 4 chains) to surface compile errors, immediate sampling failures, severe divergences, and OOM risk cheaply (ref: `stan > Preventing Crashes`). A probe with blocking issues is a FAIL now; do not launch the full run.
-3. Full run via `fit_and_summarize` (ref: `python-environment`) — it computes summary, diagnostics, LOO, thinned draws, saves `posterior.nc`, and cleans up CSVs. For fits likely to exceed a few minutes, launch the script detached (`nohup ... &` writing to a log file) and poll the log — never sit in one long foreground command; finishing your turn without returning structured output discards the stage.
+3. Full run via your adapted `posterior_fit.py` — it computes summary, diagnostics, LOO, thinned draws, saves `posterior.nc`, and cleans up CSVs. For fits likely to exceed a few minutes, launch the script detached (`nohup ... &` writing to a log file) and poll the log — never sit in one long foreground command; finishing your turn without returning structured output discards the stage.
 4. Diagnose against the thresholds in `convergence-diagnostics` (R̂, ESS, divergences, treedepth, energy).
 5. If the failure mode is fixable geometry — e.g. hierarchical divergences clustering by τ → centered ↔ non-centered, or mixed parameterization for unbalanced groups — apply ONE reparameterization and refit (refs: `stan > Parameterization`, `convergence-diagnostics > HMC-specific pathologies`). If it persists, FAIL with the diagnosis; persistent problems indicate model issues, and tuning spirals are the refiner's call to make, not yours.
 6. Make and VIEW the diagnostic plots (trace, rank, energy, pair with divergences) — thresholds pass and visuals disagree means the visuals win.
-7. Compute the assigned ranking metric. Observation-level LOO comes free from `loo.json` (`elpd_loo`, `elpd_loo_se`); a grouped or leave-future-out metric is computed from `posterior.nc`'s `log_likelihood` per the dispatch's definition (e.g. grouped PSIS-LOO: sum log-likelihood within each group, PSIS over groups) and written to `ranking_score.json`. Extract `pareto_k_bad_pct` from `loo.json` regardless — it is a diagnostic, not a ranking.
+7. Compute the assigned ranking metric. Observation-level LOO comes free from `loo.json` (`elpd_loo`, `se`); a grouped or leave-future-out metric is computed from `posterior.nc`'s `log_likelihood` per the dispatch's definition (e.g. grouped PSIS-LOO: sum log-likelihood within each group, PSIS over groups) and written to `ranking_score.json`. Extract `pareto_k_bad_pct` from `loo.json` regardless — it is a diagnostic, not a ranking.
 8. Write the report, then `status.json` LAST — including `metric`, `score`, `score_se`, and `data_path`.

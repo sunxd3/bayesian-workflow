@@ -17,7 +17,7 @@ Resolve `data_path` to an absolute path; if `$ARGUMENTS` is empty, `data_path` c
 
 ## Verify environment
 
-Use Bash to check that `./pyproject.toml` and `./shared_utils/` both exist in the current working directory. If either is missing, tell the user to run `/bayesian-workflow:setup` first and stop.
+Use Bash to check that `./pyproject.toml` exists in the current working directory. If it is missing, tell the user to run `/bayesian-workflow:setup` first and stop.
 
 ## Run explore.js
 

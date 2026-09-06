@@ -22,28 +22,22 @@ Pass the true parameters as part of the `data` dict to `simulator.stan` and run
 it in fixed-param mode. The Stan `_rng` calls produce one draw of synthetic
 `y_rep`.
 
-Dataflow:
-1. Compile `simulator.stan` via `compile_model`
-2. Merge `true_params` into `stan_data`
-3. Run with `fixed_param=True, iter_warmup=0, adapt_engaged=False, iter_sampling=1`
-4. Extract `y_rep` via `stan_variable("y_rep")`
-5. Clean up CSVs via `cleanup_csv_files`
-
-See `python-environment > Common workflows > Recovery / fake-data simulation`
-for the canonical script.
+Run `fit-pipeline > references/fake_data.py simulate` with `--simulator`, the
+inference `--data` (Stan JSON), and `--true` (the parameter values as a JSON
+object). It merges the true parameters into the data, runs one `fixed_param`
+draw, and writes `fake_data.json` (the data dict with the outcome replaced by
+the draw) and `true_params.json`.
 
 ### 4. Fit `model.stan` to the synthetic data
 
 Build a fresh `stan_data` dict with `y_obs` replaced by the simulated `y_rep`,
 then run the standard posterior inference flow.
 
-Dataflow:
-1. Compile `model.stan`
-2. Substitute `y_obs = y_synth.flatten()` in `stan_data`
-3. Run `fit_and_summarize` with `save_dir=<sim_dir>`
-
-See `python-environment > Common workflows > Posterior inference` for the
-canonical script.
+Run `fit-pipeline > references/posterior_fit.py` with
+`--data <sim_dir>/fake_data.json` and `--out <sim_dir>/fit` (`--no-netcdf` is
+fine here). Then `fake_data.py check --fit <sim_dir>/fit --true
+<sim_dir>/true_params.json --out <sim_dir>` writes `recovery.json` with the
+audited `coverage_90` and `max_bias_z` and a per-parameter breakdown.
 
 ### 5. Check recovery
 

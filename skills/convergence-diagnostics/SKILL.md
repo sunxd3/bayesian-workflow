@@ -12,9 +12,9 @@ enough effective draws.
 
 ## Running diagnostics
 
-The canonical workflow uses `shared_utils.check_convergence()` (see
-`python-environment > Shared Utilities`), which wraps CmdStanPy's
-`fit.summary()` and `fit.diagnose()` and avoids the OOM that raw
+The canonical workflow computes convergence from `az.summary` — see
+`summarize()` in `fit-pipeline > references/posterior_fit.py`, which applies the
+thresholds below and writes them to `summary.json`. It avoids the OOM that raw
 `fit.diagnose()` can hit on large datasets (N > 10K).
 
 For raw access: `fit.summary()` returns `R_hat` / `ESS_bulk` / `ESS_tail` /

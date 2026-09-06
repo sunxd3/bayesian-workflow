@@ -44,25 +44,25 @@ jobs:
           done
 
   lint-and-types:
-    name: shared_utils lint + types
+    name: Reference scripts lint + types
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: shared_utils
+        working-directory: tests
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: shared_utils/uv.lock
-      - run: uv sync --extra dev
-      - name: ruff
-        run: uv run ruff check --output-format=github .
+          cache-dependency-glob: tests/uv.lock
+      - run: uv sync
+      - name: ruff (tests + skills/fit-pipeline/references)
+        run: uv run ruff check --config pyproject.toml --output-format=github . ../skills/fit-pipeline/references
       - name: pyright
         run: uv run pyright
 
   unit-tests:
-    name: shared_utils unit tests (py${{ matrix.python }})
+    name: Reference scripts unit tests (py${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -70,32 +70,32 @@ jobs:
         python: ["3.10", "3.13"]
     defaults:
       run:
-        working-directory: shared_utils
+        working-directory: tests
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python }}
           enable-cache: true
-          cache-dependency-glob: shared_utils/uv.lock
-      - run: uv sync --extra dev
-      - name: pytest (mocked / synthetic-data tier)
+          cache-dependency-glob: tests/uv.lock
+      - run: uv sync
+      - name: pytest (synthetic InferenceData, no CmdStan)
         run: uv run pytest -m "not integration" -q
 
   integration-tests:
-    name: shared_utils integration (real CmdStan)
+    name: Reference scripts against real CmdStan
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: shared_utils
+        working-directory: tests
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-          cache-dependency-glob: shared_utils/uv.lock
-      - run: uv sync --extra dev
+          cache-dependency-glob: tests/uv.lock
+      - run: uv sync
 
       - name: Cache CmdStan toolchain
         id: cmdstan-cache
@@ -111,16 +111,16 @@ jobs:
         id: models-cache
         uses: actions/cache@v4
         with:
-          path: shared_utils/tests/stan
-          key: stan-models-${{ env.CMDSTAN_VERSION }}-${{ runner.os }}-${{ hashFiles('shared_utils/tests/stan/*.stan') }}
+          path: tests/stan
+          key: stan-models-${{ env.CMDSTAN_VERSION }}-${{ runner.os }}-${{ hashFiles('tests/stan/*.stan') }}
       - name: Mark cached binaries fresh
         if: steps.models-cache.outputs.cache-hit == 'true'
         # Checkout stamps the .stan sources with "now"; CmdStanPy recompiles
         # whenever a source is newer than its binary. Touch the binaries so
         # the cache is actually used.
-        run: find tests/stan -type f ! -name '*.stan' -exec touch {} +
+        run: find stan -type f ! -name '*.stan' -exec touch {} +
 
-      - name: pytest (real compile + NUTS tier)
+      - name: pytest (compile + NUTS via the reference scripts)
         env:
           # A missing toolchain must fail the job, never skip it.
           SHARED_UTILS_REQUIRE_CMDSTAN: "1"

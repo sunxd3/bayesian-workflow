@@ -43,8 +43,8 @@ has grouping. Non-Bayesian methods may appear as baselines/context only.
 All paths absolute. `<project>` is the project root; the canonical folder
 structure is below.
 
-**Phase 0 — Environment.** Check `./pyproject.toml` and `./shared_utils/`
-exist; if not, run the `/bayesian-workflow:setup` steps first.
+**Phase 0 — Environment.** Check `./pyproject.toml` exists and CmdStan is
+installed; if not, run the `/bayesian-workflow:setup` steps first.
 
 **Phase 1 — Explore.**
 

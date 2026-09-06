@@ -173,8 +173,8 @@ Both compilation and sampling can crash or OOM.
 
 **CRITICAL: Suppress Stan progress output.**
 Stan progress bars (tqdm + CmdStan stdout) accumulate in the agent transcript and can crash the session when the transcript exceeds buffer limits. Always suppress them:
-- `shared_utils.fit_model()` and `fit_and_summarize()` default to `show_progress=False, refresh=0` — no action needed
-- If calling `model.sample()` directly: always pass `show_progress=False, show_console=False, refresh=0`
+- The `fit-pipeline` reference scripts already pass `show_progress=False, show_console=False` — keep that when adapting them
+- If calling `model.sample()` directly: always pass `show_progress=False, show_console=False` (leave `refresh` at its default — CmdStanPy ≥ 1.3 rejects `refresh=0`)
 - If running a Stan binary from the command line: pass `refresh=0`
 - NEVER set `show_progress=True` or `show_console=True` — they produce megabytes of output that bloats the transcript
 
@@ -183,7 +183,7 @@ Stan progress bars (tqdm + CmdStan stdout) accumulate in the agent transcript an
 - Reduce `max_treedepth` (10 → 8)
 - Subsample data or simplify model
 
-For the Python fitting workflow (`fit_and_summarize`, save patterns, prior/recovery recipes), see `python-environment > Common workflows`.
+For the Python fitting workflow (posterior fit, prior and recovery recipes, artifact contract), see the `fit-pipeline` skill.
 
 ## ArviZ Integration
 
@@ -214,7 +214,7 @@ GQ-only programs are Stan programs without `parameters` or `model` blocks. They 
 - **Prior simulation.** Sample parameters from priors, generate `y_rep` (Pattern 1).
 - **Data simulator.** Take known parameter values as `data{}` input, generate `y_rep` (Pattern 2).
 
-For the methodology (why Stan must own data generation, what the line-by-line mirror invariant means), see `fake-data-simulation > Key Practice — Stan is the single source of truth`. For the Python workflow (compile, run with `fixed_param`, convert, save), see `python-environment > Common workflows`.
+For the methodology (why Stan must own data generation, what the line-by-line mirror invariant means), see `fake-data-simulation > Key Practice — Stan is the single source of truth`. For the Python workflow (compile, run with `fixed_param`, convert, save), see `fit-pipeline > references/prior_predictive.py` and `references/fake_data.py`.
 
 ### Pattern 1: Prior Simulation (`prior_model.stan`)
 
@@ -283,11 +283,11 @@ generated quantities {
 - For multivariate normals: `multi_normal_rng(mu, Sigma)` or `multi_normal_cholesky_rng(mu, L)`
 - **Subsampling for large N.** When N > 2000, subsample the data dict in Python before passing to Stan (fewer rows, adjusted N). The Stan program is unchanged.
 
-**Do NOT** run `fit_model(fixed_param=True)` on the main inference model for prior simulation — `fixed_param=True` does not sample from priors in the `parameters{}` block; it holds them at their initial values. Always use a GQ-only `prior_model.stan`.
+**Do NOT** run the main inference model with `fixed_param=True` for prior simulation — `fixed_param=True` does not sample from priors in the `parameters{}` block; it holds them at their initial values. Always use a GQ-only `prior_model.stan`.
 
 ## Known Issues
 
-- **CmdStanPy `diagnose()` OOMs.** Fails on large data (N > 10K). Use `check_convergence()` from `shared_utils` instead.
+- **CmdStanPy `diagnose()` OOMs.** Fails on large data (N > 10K). Compute R̂/ESS from `az.summary` the way `fit-pipeline > references/posterior_fit.py` does instead.
 - **ArviZ column names.** Lowercase (`r_hat`, `ess_bulk`). CmdStanPy uses uppercase (`R_hat`, `ESS_bulk`).
 - **CmdStanPy summary columns renamed.** `N_Eff` → `ESS_bulk`, `N_eff` → `ESS_tail`. Use the ESS_* names.
 - **Stan CSV columns.** Use dots: `beta.1` not `beta[1]`.

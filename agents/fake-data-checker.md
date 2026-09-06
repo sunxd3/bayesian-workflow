@@ -6,6 +6,7 @@ description: >
 skills:
   - validation-protocol
   - python-environment
+  - fit-pipeline
   - artifact-guidelines
   - stan
   - fake-data-simulation
@@ -41,8 +42,8 @@ Files written under `output_dir`:
 ## Procedure
 
 1. Choose the check variant — single-draw (cheap, default pre-fit gate) or SBC (rigorous, when the single-draw result is ambiguous or the model is novel/complex). Ref: `fake-data-simulation > references/decision`.
-2. Draw true parameters from plausible prior regions, simulate data via `simulator.stan` (ref: `fake-data-simulation > references/single-draw`, or `references/sbc` for SBC).
-3. Fit `<experiment_dir>/model.stan` to the fake data. For fits likely to exceed a few minutes, launch the script detached (`nohup ... &` writing to a log) and poll rather than blocking in one foreground command. Check the recovery fit's own convergence first (ref: `convergence-diagnostics`) — a non-converged recovery fit is a FAIL of this stage, not a shrug.
-4. Compute `coverage_90` (fraction of parameters whose true value lies in the posterior 90% CI) and `max_bias_z` (max |posterior mean − true| / posterior sd). Plot true-vs-recovered with intervals. View the plots.
+2. Draw true parameters from plausible prior regions, simulate data via `simulator.stan` using `fit-pipeline > references/fake_data.py simulate` (ref: `fake-data-simulation > references/single-draw`, or `references/sbc` for SBC).
+3. Fit `<experiment_dir>/model.stan` to `fake_data.json` with `fit-pipeline > references/posterior_fit.py`. For fits likely to exceed a few minutes, launch the script detached (`nohup ... &` writing to a log) and poll rather than blocking in one foreground command. Check the recovery fit's own convergence first (ref: `convergence-diagnostics`) — a non-converged recovery fit is a FAIL of this stage, not a shrug.
+4. Compute `coverage_90` (fraction of parameters whose true value lies in the posterior 90% CI) and `max_bias_z` (max |posterior mean − true| / posterior sd) with `fake_data.py check`, which writes `recovery.json`. Plot true-vs-recovered with intervals. View the plots.
 5. Verdict per `fake-data-simulation > references/decision`. FAIL distinguishes: non-convergence on own data (geometry/parameterization), biased recovery (miscoded likelihood/simulator mismatch), non-identification (flat or prior-dominated posteriors) — the distinction directs the refiner.
 6. Write the report, then `status.json` LAST.

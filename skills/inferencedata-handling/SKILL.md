@@ -8,10 +8,10 @@ user-invocable: false
 
 Use this skill when you need to construct an ArviZ `InferenceData` object
 manually from a CmdStanPy fit. **Most workflows do not need to do this
-directly** — `shared_utils.fit_and_summarize` (see
-`python-environment > Shared Utilities`) constructs InferenceData for you. This
-skill documents (a) the conventions `shared_utils` follows, so downstream
-code can rely on them, and (b) the manual conversion pattern when you need it.
+directly** — the `fit-pipeline` reference scripts construct InferenceData with
+the right groups. This skill documents (a) the conventions those scripts
+follow, so downstream code can rely on them, and (b) the manual conversion
+pattern when you need it.
 
 ## Conversion pattern
 
@@ -62,7 +62,7 @@ assert "log_likelihood" in idata.groups()
 idata.to_netcdf("posterior.nc")
 ```
 
-`fit_and_summarize` does this automatically when `save_netcdf=True`.
+`fit-pipeline > references/posterior_fit.py` writes `posterior.nc` with these groups; the repository's tests assert them.
 
 ## Common failures
 
@@ -82,5 +82,5 @@ print("Groups:", idata.groups())
 
 ## Related skills
 
-- `python-environment > Shared Utilities` — `fit_and_summarize` / `FitResult` constructs InferenceData for you in the canonical workflow.
-- `stan > Generated-Quantities-Only Programs` — `to_arviz_prior` produces a prior-predictive InferenceData from a GQ-only `prior_model.stan` fit.
+- `fit-pipeline` — the reference scripts construct InferenceData for the posterior fit (`posterior_fit.py`) and the prior predictive run (`prior_predictive.py`: `prior` + `prior_predictive` groups from a GQ-only `prior_model.stan` fit).
+- `stan > Generated-Quantities-Only Programs` — how to write the GQ-only programs those runs consume.

@@ -93,39 +93,44 @@ an update; the milestones below summarize the significant changes.
   synthesist fallback when the Workflow tool is unavailable).
 
 ### Added
-- **Real-CmdStan integration suite for `shared_utils`**
-  (`shared_utils/tests/integration/`, marker `integration`). Six small Stan
-  programs under `tests/stan/` are compiled and sampled for real: the tests
-  pin the exact artifact file set and JSON layouts the workflow audits,
-  recover known parameters, check posterior-predictive coverage, prove that
-  Neal's funnel is flagged as divergent, that LOO ranks a Student-t
-  likelihood above a normal one on heavy-tailed data by more than 2 SE of the
-  paired difference, and run the three `python-environment` recipes as
-  written. With `SHARED_UTILS_REQUIRE_CMDSTAN=1` a missing toolchain fails
+- **`fit-pipeline` skill** — the artifact contract for the fit stages
+  (`summary.json`, `diagnostics.json`, `loo.json`, `thinned_draws.npz`,
+  `posterior.nc`; `prior_check.json`; `recovery.json`) plus three runnable
+  reference scripts agents copy and adapt instead of importing a library:
+  `posterior_fit.py` (probe or full NUTS run → artifacts), `prior_predictive.py`
+  (GQ-only prior simulation; `--bounds` → the audited `extreme_draw_pct`), and
+  `fake_data.py` (`simulate` one fake dataset; `check` → the audited
+  `coverage_90` and `max_bias_z`). The scripts encode the operational rules the
+  old library carried: quiet sampling, no `adapt_delta` on `fixed_param` runs,
+  explicit InferenceData groups from `fit.metadata.stan_vars`,
+  `az.summary`-based convergence (no `diagnose()` OOM), CSV cleanup, numpy-safe
+  JSON.
+- **Real-CmdStan test suite for the reference scripts** (`tests/`, marker
+  `integration`): six small Stan programs are compiled and sampled; the tests
+  pin the artifact file set and JSON layouts, cross-file consistency, parameter
+  recovery, posterior-predictive coverage, that Neal's funnel is flagged as
+  divergent, that LOO ranks a Student-t likelihood above a normal one on
+  heavy-tailed data by more than 2 SE of the paired difference, the prior and
+  recovery numbers, and each CLI as an agent would invoke it. A pure tier on
+  synthetic InferenceData covers the decision logic and the contract without
+  CmdStan. With `SHARED_UTILS_REQUIRE_CMDSTAN=1` a missing toolchain fails
   instead of skipping.
-- **CI** now has six jobs: manifest validation, workflow-script parse check,
-  ruff + pyright, unit tests on Python 3.10 and 3.13, and the integration
-  tier with CmdStan (pinned, cached) and cached compiled test models.
-- `fit_and_summarize` accepts `observed_data`, `coords`, `dims`,
-  `log_likelihood`, and `posterior_predictive` (forwarded to `to_arviz`);
-  `to_arviz` accepts `observed_data`. `FitResult.loo_dict()` is the single
-  source for the LOO fields written to both `summary.json` and `loo.json`.
-
-### Fixed
-- `fit_model` forwarded `adapt_delta` even with `adapt_engaged=False`, which
-  CmdStanPy 1.3 rejects — so the prior-predictive and fake-data recipes in
-  the `python-environment` skill (GQ-only `fixed_param` runs) failed outright.
-  Found by the integration suite.
-- `to_arviz` / `to_arviz_prior` never saw the fit's variable names on
-  CmdStanPy >= 1.2 (`metadata.stan_vars` replaced `stan_vars_cols`), so
-  `posterior_predictive` defaulted to `y_rep` unconditionally and conversion
-  crashed for any model without it. Found by the integration suite.
-- `fit_and_summarize` wrote `posterior.nc` without an `observed_data` group,
-  contradicting the model-fitter contract that PPC and LOO-PIT rely on.
-- `summary.json`'s `artifacts` manifest listed only `posterior.nc`; it now
-  lists every file of the save, itself included.
+- **CI** has six jobs: manifest validation, workflow-script parse check, ruff +
+  pyright over the reference scripts and tests, the pure tier on Python 3.10
+  and 3.13, and the integration tier with CmdStan (pinned, cached) and cached
+  compiled test models.
 
 ### Removed
+- **`shared_utils`**, the bundled Python library, and the setup step that
+  copied it into projects. Its only original code was the fit-and-summarize
+  artifact contract and CSV cleanup; everything else was a thin wrapper over
+  ArviZ and CmdStanPy. Writing the suite above against it surfaced two bugs
+  (`adapt_delta` forwarded with adaptation off, so every GQ-only recipe failed
+  on CmdStanPy 1.3; variable names never detected on CmdStanPy ≥ 1.2, so any
+  model without `y_rep` crashed conversion) — the reference scripts encode the
+  fixes. `/bayesian-workflow:setup` now only writes `pyproject.toml`, syncs,
+  and installs CmdStan; `python-environment` documents conventions and points
+  at `fit-pipeline` for execution.
 - `workflows/validate-experiments.js` (one Phase 3 round per call) —
   superseded by `develop.js`, which contains the same per-experiment
   lifecycle plus the multi-round loop.

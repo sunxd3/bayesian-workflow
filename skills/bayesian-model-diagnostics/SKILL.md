@@ -24,7 +24,7 @@ This check is non-negotiable. Standard LOO on dependent data produces misleading
 
 ### Implementation Note
 
-For non-standard CV methods (LFO-CV, grouped LOO), look for an implementation in `shared_utils` first (see `python-environment > Shared Utilities`). If none exists, write minimal custom code rather than a full ad-hoc framework.
+For non-standard CV methods (LFO-CV, grouped LOO), write minimal custom code from `posterior.nc`'s `log_likelihood` rather than a full ad-hoc framework; mirror `loo()` in `fit-pipeline > references/posterior_fit.py` for the observation-level shape.
 
 ## Pareto k Diagnostics
 

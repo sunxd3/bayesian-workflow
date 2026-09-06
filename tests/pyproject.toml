@@ -1,35 +1,24 @@
+# Test harness for the plugin's runnable reference code. Not shipped to users.
 [project]
-name = "shared-utils"
-version = "0.1.0"
-description = "Shared utilities for Bayesian modeling with Stan"
-readme = "README.md"
-authors = [
-    { name = "Xianda Sun", email = "sunxdt@gmail.com" }
-]
+name = "bayesian-workflow-tests"
+version = "0.0.0"
 requires-python = ">=3.10"
 dependencies = [
     "arviz>=0.17.0,<1.0.0",
     "cmdstanpy>=1.2.0",
     "numpy>=1.26.0",
     "pandas>=2.0.0",
-]
-
-[project.optional-dependencies]
-dev = [
+    "pyarrow>=15.0.0",
+    "pytest>=7.4.0",
     "ruff>=0.9.0",
     "pyright>=1.1.400",
-    "pytest>=7.4.0",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/shared_utils"]
+[tool.uv]
+package = false
 
 [tool.ruff]
-line-length = 88
+line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
@@ -39,15 +28,11 @@ ignore = ["E501"]
 [tool.pyright]
 pythonVersion = "3.10"
 typeCheckingMode = "basic"
+include = [".", "../skills/fit-pipeline/references"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["."]
 addopts = "-ra"
 markers = [
     "integration: compiles and samples real Stan models via CmdStan (slow; skipped when CmdStan is absent unless SHARED_UTILS_REQUIRE_CMDSTAN=1)",
-]
-
-[dependency-groups]
-dev = [
-    "pyrefly>=0.51.0",
 ]
