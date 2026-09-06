@@ -6,7 +6,7 @@ ways: pure tests on synthetic InferenceData (no CmdStan) and integration tests
 that compile and sample the Stan programs under tests/stan/ for real.
 
 Without a CmdStan installation the integration tier is skipped — unless
-SHARED_UTILS_REQUIRE_CMDSTAN=1 is set, in which case a missing installation is
+REQUIRE_CMDSTAN=1 is set, in which case a missing installation is
 an error. CI sets it, so "skipped" can never masquerade as "passed".
 """
 
@@ -133,14 +133,14 @@ def _cmdstan_available() -> bool:
 def require_cmdstan() -> None:
     if _cmdstan_available():
         return
-    if os.environ.get("SHARED_UTILS_REQUIRE_CMDSTAN") == "1":
+    if os.environ.get("REQUIRE_CMDSTAN") == "1":
         pytest.fail(
-            "SHARED_UTILS_REQUIRE_CMDSTAN=1 but no CmdStan installation was found",
+            "REQUIRE_CMDSTAN=1 but no CmdStan installation was found",
             pytrace=False,
         )
     pytest.skip(
         "CmdStan not installed — integration tests skipped "
-        "(set SHARED_UTILS_REQUIRE_CMDSTAN=1 to make this an error)"
+        "(set REQUIRE_CMDSTAN=1 to make this an error)"
     )
 
 

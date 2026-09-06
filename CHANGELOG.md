@@ -113,7 +113,7 @@ an update; the milestones below summarize the significant changes.
   heavy-tailed data by more than 2 SE of the paired difference, the prior and
   recovery numbers, and each CLI as an agent would invoke it. A pure tier on
   synthetic InferenceData covers the decision logic and the contract without
-  CmdStan. With `SHARED_UTILS_REQUIRE_CMDSTAN=1` a missing toolchain fails
+  CmdStan. With `REQUIRE_CMDSTAN=1` a missing toolchain fails
   instead of skipping.
 - **CI** has six jobs: manifest validation, workflow-script parse check, ruff +
   pyright over the reference scripts and tests, the pure tier on Python 3.10

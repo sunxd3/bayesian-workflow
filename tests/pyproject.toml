@@ -34,5 +34,5 @@ include = [".", "../skills/fit-pipeline/references"]
 testpaths = ["."]
 addopts = "-ra"
 markers = [
-    "integration: compiles and samples real Stan models via CmdStan (slow; skipped when CmdStan is absent unless SHARED_UTILS_REQUIRE_CMDSTAN=1)",
+    "integration: compiles and samples real Stan models via CmdStan (slow; skipped when CmdStan is absent unless REQUIRE_CMDSTAN=1)",
 ]

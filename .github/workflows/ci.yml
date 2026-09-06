@@ -123,5 +123,5 @@ jobs:
       - name: pytest (compile + NUTS via the reference scripts)
         env:
           # A missing toolchain must fail the job, never skip it.
-          SHARED_UTILS_REQUIRE_CMDSTAN: "1"
+          REQUIRE_CMDSTAN: "1"
         run: uv run pytest -m integration -v --durations=10
